@@ -30,9 +30,6 @@ if sys.platform == 'darwin':
 from setvars import *
 import functions as fun
 
-# import pkg_resources
-# pkg_resources.get_distribution("pandas").version
-
 #%% ####### Run ###############################################################
 start = time.clock()
 """
@@ -166,28 +163,3 @@ try:
     print("OUTPUT: {}".format(xls_fname))
 except:
     print("No Excel file created. You'll have to do it yourself from the CSV.")
-
-#%% Export the files used to run the process to code file in home dir
-try:
-    os.makedirs(code_dir)
-except OSError:
-    if not os.path.isdir(code_dir):
-        raise
-shutil.copy(os.path.join(script_path, 'TE_execute.py'), os.path.join(code_dir, 'TE_execute.py'))
-shutil.copy(os.path.join(script_path, 'TE_config.py'), os.path.join(code_dir, 'TE_config.py'))
-shutil.copy(os.path.join(script_path, 'TE_functions.py'), os.path.join(code_dir, 'TE_functions.py'))
-shutil.copy(os.path.join(script_path, 'TE_functions_arcpy.py'), os.path.join(code_dir, 'TE_functions_arcpy.py'))
-
-"""
-Metadata
-"""
-pts_df = pd.read_pickle(os.path.join(scratch_dir, transPts_null+'.pkl'))
-trans_df = pd.read_pickle(os.path.join(scratch_dir, extTrans_null+'.pkl'))
-
-len(pts_df)
-var = 'ptZmhw'
-pts_df[var].min()
-pts_df[var].max()
-pts_df[var].count()
-
-pts_df.describe()
