@@ -49,28 +49,19 @@ SiteYear_strings['MTL'] = MTL = (MHW+MLW)/2
 
 ######## Set paths ################################################################
 topdir = r'\\Mac' if sys.platform == 'win32' else '/Volumes' # assumes win32 is the only platform that would use server address
-local_home = os.path.join(topdir, 'stor', 'Projects', 'TransectExtraction', '{}'.format(site+year))
+proj_dir = os.path.join(topdir, 'stor', 'Projects', 'TransectExtraction', '{}'.format(site+year))
 try:
-    os.makedirs(local_home)
+    os.makedirs(proj_dir)
 except OSError:
-    if not os.path.isdir(local_home):
+    if not os.path.isdir(proj_dir):
         raise
 
-# volume = r'\\IGSAGIEGGS-CSGG' if sys.platform == 'win32' else '/Volumes' # assumes win32 is the only platform that would use server address
-# volume = r'\\Mac' if sys.platform == 'win32' else '/Volumes' # assumes win32 is the only platform that would use server address
-# site_dir = os.path.join(volume, 'Thieler_Group', 'Commons_DeepDive', 'DeepDive',
-    # SiteYear_strings['region'], SiteYear_strings['site'])
-site_dir = local_home
-
-home = os.path.join(local_home, '{site}{year}.gdb'.format(**SiteYear_strings))
-if sys.platform == 'win32':
-    arcpy.env.workspace=home
-scratch_dir = os.path.join(local_home, 'scratch') # out_dir = os.path.join(local_home, 'scratch')
-final_dir = os.path.join(site_dir, 'Extracted_Data')
-code_dir = os.path.join(local_home, 'Extraction_code')
+home = os.path.join(proj_dir, '{site}{year}.gdb'.format(**SiteYear_strings))
+scratch_dir = os.path.join(proj_dir, 'scratch') # out_dir = os.path.join(proj_dir, 'scratch')
+final_dir = os.path.join(proj_dir, 'Extracted_Data')
+code_dir = os.path.join(proj_dir, 'Extraction_code')
 
 SiteYear_strings['home'] = home
-SiteYear_strings['site_dir'] = site_dir
 
 ######## Set paths ################################################################
 if SiteYear_strings['region'] == 'Massachusetts' or SiteYear_strings['region'] == 'RhodeIsland' or SiteYear_strings['region'] == 'Maine':
@@ -79,14 +70,13 @@ else:
     proj_code = 26918 # "NAD 1983 UTM Zone 18N"
 
 ######## Set environments ##########
-if sys.platform == 'win32':
-    arcpy.env.overwriteOutput = True 						# Overwrite output?
-    arcpy.CheckOutExtension("Spatial") 						# Checkout Spatial Analysis extension
-    arcpy.env.workspace = home
-    arcpy.env.scratchWorkspace = local_home
-    # Spatial references
-    nad83 = arcpy.SpatialReference(4269)
-    utmSR = arcpy.SpatialReference(proj_code)
+arcpy.env.overwriteOutput = True 						# Overwrite output?
+arcpy.CheckOutExtension("Spatial") 						# Checkout Spatial Analysis extension
+arcpy.env.workspace = home
+arcpy.env.scratchWorkspace = proj_dir
+# Spatial references
+nad83 = arcpy.SpatialReference(4269)
+utmSR = arcpy.SpatialReference(proj_code)
 
 ########### Default inputs ##########################
 orig_trans = '{site}_LTorig'.format(**SiteYear_strings)
@@ -97,8 +87,7 @@ extendedTrans = "{site}{year}_extTrans".format(**SiteYear_strings) # Created MAN
 ShorelinePts = '{site}{year}_SLpts'.format(**SiteYear_strings)
 dhPts = '{site}{year}_DHpts'.format(**SiteYear_strings)				# Dune crest
 dlPts = '{site}{year}_DLpts'.format(**SiteYear_strings) 		  # Dune toe
-MHW_oceanside = "{site}{year}_MHWfromSLPs".format(**SiteYear_strings)
-inletLines = '{site}{year}_inletLines'.format(**SiteYear_strings) # manually create lines based on the boundary polygon that correspond to end of land and cross the MHW line
+inletLines = '{site}{year}_inletLines'.format(**SiteYear_strings)
 armorLines = '{site}{year}_armor'.format(**SiteYear_strings)
 barrierBoundary = '{site}{year}_bndpoly_2sl'.format(**SiteYear_strings)   # Barrier Boundary polygon; create with TE_createBoundaryPolygon.py
 elevGrid = '{site}{year}_DEM'.format(**SiteYear_strings)				# Elevation

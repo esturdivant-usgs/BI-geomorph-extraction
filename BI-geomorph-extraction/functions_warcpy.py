@@ -28,6 +28,10 @@ import functions as fun
 # General use functions
 """
 def SetInputFCname(workingdir, varname, inFCname, system_ext=True):
+    """
+    # Prompt operator for filename of input feature class.
+    # Uses pythonaddins and
+    """
     if arcpy.Exists(inFCname):
         inFCname = inFCname
     else:

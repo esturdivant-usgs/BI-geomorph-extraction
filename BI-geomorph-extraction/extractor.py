@@ -17,16 +17,11 @@ import time
 import shutil
 import pandas as pd
 import numpy as np
+import arcpy
 # path to TransectExtraction module
-if sys.platform == 'win32':
-    script_path = r"\\Mac\Home\GitHub\plover_transect_extraction\TransectExtraction"
-    sys.path.append(script_path) # path to TransectExtraction module
-    import arcpy
-    # import pythonaddins
-    import functions_warcpy as fwa
-if sys.platform == 'darwin':
-    script_path = '/Users/esturdivant/GitHub/plover_transect_extraction/TransectExtraction'
-    sys.path.append(script_path)
+script_path = r"\\Mac\Home\GitHub\plover_transect_extraction\TransectExtraction"
+sys.path.append(script_path) # path to TransectExtraction module
+import functions_warcpy as fwa
 from setvars import *
 import functions as fun
 
