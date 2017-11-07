@@ -8,9 +8,7 @@ email: esturdivant@usgs.gov; bgutierrez@usgs.gov
 
 ## How to run:
 
-1. Acquire all input feature classes - refer to input variables in addition to the list below.
-    (QA/QC/cross-check them: projections, agreement, etc.)
-    Preferred projection is NAD83, Meters - Albers or UTM Zone 19N (or 17 or 18 depending on region of Atlantic coast)
+1. Acquire all input feature classes - refer to input variables in addition to the list below. 
     - transect lines
     - DH points
     - DL points
@@ -27,3 +25,10 @@ email: esturdivant@usgs.gov; bgutierrez@usgs.gov
     - supplemented and sorted transects <- script + **manual**
     - 'tidied' extended transects <- script + **manual**
     
+* Sorting can be tricky. I'll need to provide lots of explanation for this step. #TODO
+
+4. QA/QC/cross-check everything thoroughly: projections, agreement, etc. Preferred projection is NAD83, Meters - Albers or UTM Zone 18N or 19N depending on region of Atlantic coast.
+
+5. Run extractor.py.
+
+## Notes about using ArcPy
