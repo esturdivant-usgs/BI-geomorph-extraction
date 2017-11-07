@@ -19,7 +19,7 @@ import pandas as pd
 import numpy as np
 import arcpy
 # path to TransectExtraction module
-script_path = r"\\Mac\Home\GitHub\plover_transect_extraction\TransectExtraction"
+script_path = r"X:\Projects\DeepDive\BI-geomorph-extraction"
 sys.path.append(script_path) # path to TransectExtraction module
 import functions_warcpy as fwa
 from setvars import *
