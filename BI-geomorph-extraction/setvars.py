@@ -29,6 +29,34 @@ SiteYear_strings = siteyear[site+year]
 
 overwrite_Z = False
 
+
+
+######## Set-up project folder ################################################################
+proj_dir = os.path.join(r'\\Mac', 'stor', 'Projects', 'TransectExtraction', '{}'.format(site+year))
+home = os.path.join(proj_dir, '{site}{year}.gdb'.format(**SiteYear_strings))
+scratch_dir = os.path.join(proj_dir, 'scratch')
+final_dir = os.path.join(proj_dir, 'Extracted_Data')
+try:
+    os.makedirs(proj_dir)
+except OSError:
+    if not os.path.isdir(proj_dir):
+        raise
+
+######## Set paths ################################################################
+if SiteYear_strings['region'] == 'Massachusetts' or SiteYear_strings['region'] == 'RhodeIsland' or SiteYear_strings['region'] == 'Maine':
+    proj_code = 26919 # "NAD 1983 UTM Zone 19N"
+else:
+    proj_code = 26918 # "NAD 1983 UTM Zone 18N"
+
+######## Set environments ##########
+arcpy.env.overwriteOutput = True 						# Overwrite output?
+arcpy.CheckOutExtension("Spatial") 						# Checkout Spatial Analysis extension
+arcpy.env.workspace = home
+arcpy.env.scratchWorkspace = proj_dir
+# Spatial references
+nad83 = arcpy.SpatialReference(4269)
+utmSR = arcpy.SpatialReference(proj_code)
+
 ########### Default Values ##########################
 tID_fld = "sort_ID"
 pID_fld = "SplitSort"
@@ -47,51 +75,12 @@ dMHW = -MHW                         # Beach height adjustment
 oMLW = MHW-MLW                      # MLW offset from MHW # Beach height adjustment (relative to MHW)
 SiteYear_strings['MTL'] = MTL = (MHW+MLW)/2
 
-######## Set paths ################################################################
-topdir = r'\\Mac' if sys.platform == 'win32' else '/Volumes' # assumes win32 is the only platform that would use server address
-proj_dir = os.path.join(topdir, 'stor', 'Projects', 'TransectExtraction', '{}'.format(site+year))
-try:
-    os.makedirs(proj_dir)
-except OSError:
-    if not os.path.isdir(proj_dir):
-        raise
-
-home = os.path.join(proj_dir, '{site}{year}.gdb'.format(**SiteYear_strings))
-scratch_dir = os.path.join(proj_dir, 'scratch') # out_dir = os.path.join(proj_dir, 'scratch')
-final_dir = os.path.join(proj_dir, 'Extracted_Data')
-code_dir = os.path.join(proj_dir, 'Extraction_code')
-
-SiteYear_strings['home'] = home
-
-######## Set paths ################################################################
-if SiteYear_strings['region'] == 'Massachusetts' or SiteYear_strings['region'] == 'RhodeIsland' or SiteYear_strings['region'] == 'Maine':
-    proj_code = 26919 # "NAD 1983 UTM Zone 19N"
-else:
-    proj_code = 26918 # "NAD 1983 UTM Zone 18N"
-
-######## Set environments ##########
-arcpy.env.overwriteOutput = True 						# Overwrite output?
-arcpy.CheckOutExtension("Spatial") 						# Checkout Spatial Analysis extension
-arcpy.env.workspace = home
-arcpy.env.scratchWorkspace = proj_dir
-# Spatial references
-nad83 = arcpy.SpatialReference(4269)
-utmSR = arcpy.SpatialReference(proj_code)
-
 ########### Default inputs ##########################
 orig_trans = '{site}_LTorig'.format(**SiteYear_strings)
-orig_extTrans = '{site}{year}_extTrans'.format(**SiteYear_strings)
-orig_tidytrans = '{site}_tidyTrans'.format(**SiteYear_strings)
-
-extendedTrans = "{site}{year}_extTrans".format(**SiteYear_strings) # Created MANUALLY: see TransExtv4Notes.txt
 ShorelinePts = '{site}{year}_SLpts'.format(**SiteYear_strings)
 dhPts = '{site}{year}_DHpts'.format(**SiteYear_strings)				# Dune crest
 dlPts = '{site}{year}_DLpts'.format(**SiteYear_strings) 		  # Dune toe
-inletLines = '{site}{year}_inletLines'.format(**SiteYear_strings)
-armorLines = '{site}{year}_armor'.format(**SiteYear_strings)
-barrierBoundary = '{site}{year}_bndpoly_2sl'.format(**SiteYear_strings)   # Barrier Boundary polygon; create with TE_createBoundaryPolygon.py
 elevGrid = '{site}{year}_DEM'.format(**SiteYear_strings)				# Elevation
-elevGrid_5m = elevGrid+'_5m'				# Elevation
 
 ############# Intermediate products ####################
 bndMTL = '{site}{year}_bndpoly_mtl'.format(**SiteYear_strings)
@@ -99,69 +88,43 @@ bndMHW = '{site}{year}_bndpoly_mhw'.format(**SiteYear_strings)
 bndpoly = '{site}{year}_bndpoly'.format(**SiteYear_strings)
 
 ############## Outputs ###############################
+inletLines = '{site}{year}_inletLines'.format(**SiteYear_strings)
+armorLines = '{site}{year}_armor'.format(**SiteYear_strings)
+barrierBoundary = '{site}{year}_bndpoly_2sl'.format(**SiteYear_strings)   # Barrier Boundary polygon; create with TE_createBoundaryPolygon.py
 dh2trans = '{site}{year}_DH2trans'.format(**SiteYear_strings)							# DHigh within 10m
 dl2trans = '{site}{year}_DL2trans'.format(**SiteYear_strings)						# DLow within 10m
 arm2trans = '{site}{year}_arm2trans'.format(**SiteYear_strings)
-oceanside_auto = '{site}{year}_MHWfromSLPs'.format(**SiteYear_strings)
 shl2trans = '{site}{year}_SHL2trans'.format(**SiteYear_strings)							# beach slope from lidar within 10m of transect
-intersect_shl2trans = '{site}{year}_SHL2trans_intersect'.format(**SiteYear_strings)							# beach slope from lidar within 10m of transect
-MLWpts = '{site}{year}_MLW2trans'.format(**SiteYear_strings)                     # MLW points calculated during Beach Width calculation
-CPpts = '{site}{year}_topBeachEdgePts'.format(**SiteYear_strings)                     # Points used as upper beach edge for Beach Width and height
 shoreline = '{site}{year}_ShoreBetweenInlets'.format(**SiteYear_strings)        # Complete shoreline ready to become route in Pt. 2
+elevGrid_5m = elevGrid+'_5m'				# Elevation
 slopeGrid = '{site}{year}_slope_5m'.format(**SiteYear_strings)
 
 # Transects
 extendedTransects = '{site}{year}_extTrans_working'.format(**SiteYear_strings)
 extTrans_tidy = "{site}_tidyTrans".format(**SiteYear_strings)
+extendedTrans = "{site}{year}_extTrans".format(**SiteYear_strings) # Created MANUALLY: see TransExtv4Notes.txt
 tidy_clipped = "{site}{year}_tidyTrans_clipped".format(**SiteYear_strings)
 extTrans_fill = '{site}{year}_extTrans_fill'.format(**SiteYear_strings)
 extTrans_null = '{site}{year}_extTrans_null'.format(**SiteYear_strings)
 extTrans_shp = '{site}{year}_extTrans_shp'.format(**SiteYear_strings)
 
 # Points
+transPts_presort = '{site}{year}_5mPts_unsorted'.format(**SiteYear_strings)
 transPts = '{site}{year}_transPts_working'.format(**SiteYear_strings) 	# Outputs Transect Segment points
-# transPts = '{site}{year}_trans_5mPts'.format(**SiteYear_strings)
 transPts_null = '{site}{year}_transPts_null'.format(**SiteYear_strings)
 transPts_fill= '{site}{year}_transPts_fill'.format(**SiteYear_strings)
 transPts_shp = '{site}{year}_transPts_shp'.format(**SiteYear_strings)
-transPts_bw = '{site}{year}_transPts_beachWidth_fill'.format(**SiteYear_strings)
 pts_elevslope = 'transPts_ZmhwSlp'
-out_stats = os.path.join(home,"avgZ_byTransect")
-beachwidth_rst = "{site}{year}_beachWidth".format(**SiteYear_strings)
 
-transPts_presort = '{site}{year}_5mPts_unsorted'.format(**SiteYear_strings)
-
+# Rasters
 rst_transID = "{site}_rstTransID".format(**SiteYear_strings)
 rst_transIDpath = os.path.join(home, rst_transID)
-
 rst_transPopulated = "{site}{year}_rstTrans_populated".format(**SiteYear_strings)
-
 rst_transgrid_path = os.path.join(scratch_dir, "{code}_trans".format(**SiteYear_strings))
-rst_bwgrid_path = os.path.join(scratch_dir, "{code}".format(**SiteYear_strings))
 rst_bwgrid_path = os.path.join(home, "{code}".format(**SiteYear_strings))
 bw_rst="{code}_ubw".format(**SiteYear_strings)
 
-
-
 ########### Field names ##########################
-# transect_fields_part0 = ['sort_ID','TRANSORDER', 'TRANSECTD', 'LRR', 'LR2', 'LSE', 'LCI90']
-# transect_fields_part1 = ['SL_Lat', 'SL_Lon', 'SL_x', 'SL_y', 'Bslope',
-#     'DL_Lat', 'DL_Lon', 'DL_x', 'DL_y', 'DL_z', 'DL_zMHW',
-#     'DH_Lat', 'DH_Lon', 'DH_x', 'DH_y', 'DH_z', 'DH_zMHW',
-#     'Arm_Lat', 'Arm_Lon', 'Arm_x', 'Arm_y', 'Arm_z', 'Arm_zMHW',
-#     'DistDH', 'DistDL', 'DistArm']
-# transect_fields_part2 = ['MLW_x','MLW_y',
-#    'bh_mhw','bw_mhw',
-#    'bh_mlw','bw_mlw',
-#    'CP_x','CP_y','CP_zMHW']
-# transect_fields_part3 = ['Dist2Inlet']
-# transect_fields_part4 = ['WidthPart', 'WidthLand', 'WidthFull']
-# transect_fields = transect_fields_part1 + transect_fields_part2 + transect_fields_part3 + transect_fields_part4
-# transPt_fields = ['Dist_Seg', 'Dist_MHWbay', 'seg_x', 'seg_y',
-#     'DistSegDH', 'DistSegDL', 'DistSegArm',
-#     'SplitSort', 'ptZ', 'ptSlp', 'ptZmhw',
-#     'MAX_ptZmhw', 'MEAN_ptZmhw']
-
 trans_flds0 = ['sort_ID','TRANSORDER', 'TRANSECTID', 'LRR', 'LR2', 'LSE', 'LCI90']
 trans_flds_arc = ['SL_Lat', 'SL_Lon', 'SL_x', 'SL_y', 'Bslope',
     'DL_Lat', 'DL_Lon', 'DL_x', 'DL_y', 'DL_z', 'DL_zMHW',

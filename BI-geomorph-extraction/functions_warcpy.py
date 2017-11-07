@@ -27,31 +27,6 @@ import functions as fun
 """
 # General use functions
 """
-def SetInputFCname(workingdir, varname, inFCname, system_ext=True):
-    """
-    # Prompt operator for filename of input feature class.
-    # Uses pythonaddins and
-    """
-    if arcpy.Exists(inFCname):
-        inFCname = inFCname
-    else:
-        try:
-            FCname = pythonaddins.OpenDialog("Select "+varname+" File (e.g. "+inFCname+")", False, workingdir,'Select')
-        except RuntimeError:
-            FCname = raw_input("{} File (e.g. {} or '0' for none): ".format(varname, inFCname))
-            if FCname == '0':
-                FCname = False
-            elif not arcpy.Exists(FCname):
-                FCname = raw_input("{} doesn't exist. Try again. \n{} File (e.g. {}): ".format(FCname, varname, inFCname))
-        if FCname:
-            inFCname = os.path.basename(FCname)
-        else:
-            print('No data selected for {}.'.format(inFCname))
-            inFCname = False
-            if system_ext:
-                raise SystemExit
-    return inFCname
-
 def unique_values(table, field):
     # return sorted unique values in field
     data = arcpy.da.TableToNumPyArray(table, [field])
@@ -94,6 +69,7 @@ def fieldsAbsent(in_fc, fieldnames):
         return mfields
 
 def fieldExists(in_fc, fieldname):
+    # Check whether field exists in feature class
     try:
         fieldList = arcpy.ListFields(os.path.join(arcpy.env.workspace, in_fc))
     except:
@@ -104,7 +80,7 @@ def fieldExists(in_fc, fieldname):
     return False
 
 def CopyAndWipeFC(in_fc, out_fc, preserveflds=[]):
-    # Make copy of transects and manually fill the gaps. Then select all the new transect and run the next piece of code.
+    # Make copy of feature class with all Null. Preserves values in necessary and/or indicated fields.
     out_fc = os.path.join(arcpy.env.scratchGDB, out_fc)
     arcpy.CopyFeatures_management(in_fc, out_fc)
     # Replace values of all new transects
@@ -115,25 +91,25 @@ def CopyAndWipeFC(in_fc, out_fc, preserveflds=[]):
             cursor.updateRow([None] * len(row))
     return out_fc
 
-def AddNewFields(fc,fieldlist,fieldtype="DOUBLE", verbose=True):
-    # Add fields to FC if they do not already exist. New fields must all be the same type.
-    # print('Adding fields to {} as type {} if they do not already exist.'.format(out_fc, fieldtype))
-    def AddNewField(fc, newfname, fieldtype, verbose):
-        # Add single new field
-        if not fieldExists(fc, newfname):
-            arcpy.AddField_management(fc, newfname, fieldtype)
-            if verbose:
-                print('Added {} field to {}'.format(newfname, fc))
-        return fc
-    # Execute for multiple fields
-    if type(fieldlist) is str:
-        AddNewField(fc, fieldlist, fieldtype, verbose)
-    elif type(fieldlist) is list or type(fieldlist) is tuple:
-        for newfname in fieldlist:
-            AddNewField(fc, newfname, fieldtype, verbose)
-    else:
-        print("fieldlist accepts string, list, or tuple of field names. {} type not accepted.".format(type(fieldlist)))
-    return fc
+# def AddNewFields(fc,fieldlist,fieldtype="DOUBLE", verbose=True):
+#     # Add fields to FC if they do not already exist. New fields must all be the same type.
+#     # print('Adding fields to {} as type {} if they do not already exist.'.format(out_fc, fieldtype))
+#     def AddNewField(fc, newfname, fieldtype, verbose):
+#         # Add single new field
+#         if not fieldExists(fc, newfname):
+#             arcpy.AddField_management(fc, newfname, fieldtype)
+#             if verbose:
+#                 print('Added {} field to {}'.format(newfname, fc))
+#         return fc
+#     # Execute for multiple fields
+#     if type(fieldlist) is str:
+#         AddNewField(fc, fieldlist, fieldtype, verbose)
+#     elif type(fieldlist) is list or type(fieldlist) is tuple:
+#         for newfname in fieldlist:
+#             AddNewField(fc, newfname, fieldtype, verbose)
+#     else:
+#         print("fieldlist accepts string, list, or tuple of field names. {} type not accepted.".format(type(fieldlist)))
+#     return fc
 
 def DeleteExtraFields(inTable, keepfields=[]):
     fldsToDelete = [x.name for x in arcpy.ListFields(inTable) if not x.required] # list all fields that are not required in the FC (e.g. OID@)
@@ -209,26 +185,26 @@ def DuplicateField(fc, fld, newname, ftype=False):
             cursor.updateRow([row[0], row[0]])
     return(fc)
 
-def AddXYAttributes(fc, newfc, prefix, proj_code=26918):
-    try:
-        try:
-            RemoveLayerFromMXD(fc)
-        except:
-            pass
-        arcpy.MultipartToSinglepart_management(fc,newfc) # failed for SHL2trans_temp: says 'Cannot open...'
-    except arcpy.ExecuteError:
-        print(arcpy.GetMessages(2))
-        print("Attempting to continue")
-        #RemoveLayerFromMXD(fc)
-        arcpy.FeatureClassToFeatureClass_conversion(fc,arcpy.env.workspace,newfc)
-        pass
-    fieldlist = [prefix+'_Lat',prefix+'_Lon',prefix+'_x',prefix+'_y']
-    AddNewFields(newfc, fieldlist)
-    with arcpy.da.UpdateCursor(newfc, [prefix+'_Lon', prefix+'_Lat',"SHAPE@XY"], spatial_reference=arcpy.SpatialReference(4269)) as cursor:
-        [cursor.updateRow([row[2][0], row[2][1], row[2]]) for row in cursor]
-    with arcpy.da.UpdateCursor(newfc,[prefix+'_x',prefix+'_y',"SHAPE@XY"], spatial_reference=arcpy.SpatialReference(proj_code)) as cursor:
-        [cursor.updateRow([row[2][0], row[2][1], row[2]]) for row in cursor]
-    return newfc, fieldlist
+# def AddXYAttributes(fc, newfc, prefix, proj_code=26918):
+#     try:
+#         try:
+#             RemoveLayerFromMXD(fc)
+#         except:
+#             pass
+#         arcpy.MultipartToSinglepart_management(fc,newfc) # failed for SHL2trans_temp: says 'Cannot open...'
+#     except arcpy.ExecuteError:
+#         print(arcpy.GetMessages(2))
+#         print("Attempting to continue")
+#         #RemoveLayerFromMXD(fc)
+#         arcpy.FeatureClassToFeatureClass_conversion(fc,arcpy.env.workspace,newfc)
+#         pass
+#     fieldlist = [prefix+'_Lat',prefix+'_Lon',prefix+'_x',prefix+'_y']
+#     AddNewFields(newfc, fieldlist)
+#     with arcpy.da.UpdateCursor(newfc, [prefix+'_Lon', prefix+'_Lat',"SHAPE@XY"], spatial_reference=arcpy.SpatialReference(4269)) as cursor:
+#         [cursor.updateRow([row[2][0], row[2][1], row[2]]) for row in cursor]
+#     with arcpy.da.UpdateCursor(newfc,[prefix+'_x',prefix+'_y',"SHAPE@XY"], spatial_reference=arcpy.SpatialReference(proj_code)) as cursor:
+#         [cursor.updateRow([row[2][0], row[2][1], row[2]]) for row in cursor]
+#     return newfc, fieldlist
 
 def ReplaceValueInFC(fc, oldvalue=-99999, newvalue=None, fields="*"):
     # Replace oldvalue with newvalue in fields in fc
@@ -240,12 +216,6 @@ def ReplaceValueInFC(fc, oldvalue=-99999, newvalue=None, fields="*"):
                 if row[i] == oldvalue:
                     row[i] = newvalue
             cursor.updateRow(row)
-                    # try:
-                    #     row[i] = newvalue
-                    #     cursor.updateRow(row)
-                    # except RuntimeError:
-                    #     print(cursor.fields[i])
-                    #     #print(row)
     return fc
 
 def CopyFCandReplaceValues(fc, oldvalue=-99999, newvalue=None, fields="*", out_fc='', out_dir='', verbose=True):
@@ -262,6 +232,7 @@ def CopyFCandReplaceValues(fc, oldvalue=-99999, newvalue=None, fields="*", out_f
     return fc
 
 def ReProject(fc,newfc,proj_code=26918):
+    # If spatial reference does not match desired, project in correct SR.
     if not arcpy.Describe(fc).spatialReference.factoryCode == proj_code: # NAD83 UTM18N
         arcpy.Project_management(fc,newfc,arcpy.SpatialReference(proj_code))
     else:
@@ -341,13 +312,13 @@ def ExtendLine(fc, new_fc, distance, proj_code=26918):
     return new_fc
 
 def PrepTransects_part2(trans_presort, LTextended, barrierBoundary=''):
-    # 2. Remove orig transects from manually created transects # Delete any NAT transects in the new transects layer
-    arcpy.SelectLayerByLocation_management(trans_presort, "ARE_IDENTICAL_TO",  # or "SHARE_A_LINE_SEGMENT_WITH"
-                                           LTextended)
+    # 2. Remove orig transects from manually created transects
+    # If any of the original extended transects (with null values) are still present in trans_presort, delete them.
+    arcpy.SelectLayerByLocation_management(trans_presort, "ARE_IDENTICAL_TO", LTextended)
     if int(arcpy.GetCount_management(trans_presort)[0]):
         # if old trans in new trans, delete them
         arcpy.DeleteFeatures_management(trans_presort)
-    # 3. Append relevant NAT transects to the new transects
+    # 3. Append original extended transects (with values) to the new transects
     if len(barrierBoundary)>0:
         arcpy.SelectLayerByLocation_management(LTextended, "INTERSECT", barrierBoundary)
     arcpy.Append_management(LTextended, trans_presort)
@@ -440,7 +411,6 @@ def CreateShoreBetweenInlets(shore_delineator,inletLines, out_line, ShorelinePts
     # Ready layers for processing
     DeleteExtraFields(inletLines)
     DeleteExtraFields(shore_delineator)
-    #if not arcpy.Describe(shore_delineator).spatialReference.factoryCode == proj_code:
     shore_delineator = ReProject(shore_delineator,shore_delineator+'_utm',proj_code) # Problems projecting
     typeFC = arcpy.Describe(shore_delineator).shapeType
     if typeFC == "Point" or typeFC =='Multipoint':
@@ -975,6 +945,7 @@ def FCtoDF(fc, xy=False, dffields=[], fill=-99999, id_fld=False, extra_fields=[]
     # replace fill values with NaN values
     df.replace(fill, np.nan, inplace=True) # opposite: df.fillna(fill, inplace=True)
     if len(extra_fields) > 0:
+        extra_fields += [x.upper() for x in extra_fields]
         df.drop(extra_fields, axis=1, inplace=True, errors='ignore')
     return(df)
 

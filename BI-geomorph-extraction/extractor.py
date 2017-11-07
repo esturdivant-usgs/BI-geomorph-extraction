@@ -30,17 +30,8 @@ start = time.clock()
 """
 SPATIAL: transects
 """
-#%% extendedTransects
-if not arcpy.Exists(shoreline):
-    if not arcpy.Exists(barrierBoundary):
-        barrierBoundary = fwa.NewBNDpoly(bndpoly, ShorelinePts, barrierBoundary, '25 METERS', '50 METERS')
-    fwa.CreateShoreBetweenInlets(barrierBoundary, inletLines, shoreline, ShorelinePts, proj_code)
-if not arcpy.Exists(extendedTransects):
-    arcpy.FeatureClassToFeatureClass_conversion(orig_extTrans, home, extendedTransects)
-
 #%% Create trans_df
 trans_df = fwa.FCtoDF(extendedTransects, id_fld=tID_fld, extra_fields=extra_fields)
-trans_df.drop(extra_fields, axis=1, inplace=True, errors='ignore')
 if not os.path.exists(scratch_dir):
     os.makedirs(scratch_dir)
 trans_df.to_pickle(os.path.join(scratch_dir, 'trans_df.pkl'))
