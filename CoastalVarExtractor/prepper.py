@@ -1,13 +1,12 @@
 
 '''
 Preprocessing for extracting barrier island metrics along transects
-Requires: python 2.7, Arcpy
+Requires: python 3, ArcPy
 Author: Emily Sturdivant
 email: esturdivant@usgs.gov
 
 Notes:
     Run in ArcMap python window;
-
 
 '''
 import os
