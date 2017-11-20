@@ -1,8 +1,7 @@
 '''
-Configuration file for DeepDive Transect Extraction (TE_master_rework and TE_setup_rework)
+Configuration file for DeepDive Transect Extraction (CoastalVarExtractor module)
 Author: Emily Sturdivant
-email: esturdivant@usgs.gov; bgutierrez@usgs.gov; sawyer.stippa@gmail.com
-Date last modified: 3/28/2017
+email: esturdivant@usgs.gov;
 '''
 import os
 import sys
@@ -150,20 +149,3 @@ extra_fields = ["StartX", "StartY", "ORIG_FID", "Autogen", "ProcTime",
                 "SHAPE_Leng", "OBJECTID_1", "Shape_Length", "EndX", "EndY",
                 "BaselineID", "OBJECTID", "ORIG_OID", "TRANSORDER_1"]
 extra_fields += [x.upper() for x in extra_fields]
-old_fields = ['MLW_x','MLW_y', 'bh_mhw','bw_mhw', 'bh_mlw','bw_mlw', 'CP_x','CP_y','CP_zMHW',
-              'MAX_ptZmhw', 'MEAN_ptZmhw']
-old_trans_flds_arc = ['SL_Lat', 'SL_Lon', 'SL_easting', 'SL_northing', 'Bslope',
-                  'DL_Lat', 'DL_Lon', 'DL_easting', 'DL_northing', 'DL_z', 'DL_zMHW',
-                  'DH_Lat', 'DH_Lon', 'DH_easting', 'DH_northing', 'DH_z', 'DH_zMHW',
-                  'Arm_Lat', 'Arm_Lon', 'Arm_easting', 'Arm_northing', 'Arm_z', 'Arm_zMHW',
-                  'DistDH', 'DistDL', 'DistArm',
-                  'Dist2Inlet', 'WidthPart', 'WidthLand', 'WidthFull']
-repeat_fields = ['SplitSort', 'seg_x', 'seg_y']
-
-old2newflds = {'SL_easting': 'SL_x', 'SL_northing': 'SL_y',
-              'DL_easting': 'DL_x', 'DL_northing': 'DL_y',
-              'DH_easting': 'DH_x', 'DH_northing': 'DH_y',
-              'Arm_easting': 'Arm_x', 'Arm_northing': 'Arm_y',
-              'beach_h_MLW': 'uBH', 'beachWidth_MLW': 'uBW',
-              'PointZ':'ptZ', 'PointZ_mhw':'ptZmhw', 'PointSlp':'ptSlp',
-              'bh_mhw':'uBH', 'bw_mhw':'uBW'}
