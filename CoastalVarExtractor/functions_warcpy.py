@@ -14,15 +14,8 @@ import pandas as pd
 import numpy as np
 from operator import add
 import sys
-if sys.platform == 'win32':
-    script_path = r"\\Mac\Home\GitHub\plover_transect_extraction\TransectExtraction"
-    sys.path.append(script_path) # path to TransectExtraction module
-    import arcpy
-if sys.platform == 'darwin':
-    script_path = '/Users/esturdivant/GitHub/plover_transect_extraction/TransectExtraction'
-    sys.path.append(script_path)
+import arcpy
 import functions as fun
-
 
 """
 # General use functions
@@ -346,17 +339,20 @@ def SpatialSort(in_fc, out_fc, sort_corner='LL', reverse_order=False, startcount
 def SortTransectsFromSortLines(in_fc, out_fc, sort_lines=[], sortfield='sort_ID', sort_corner='LL'):
     # Alternative to SpatialSort() when sorting must be done in spatial groups
     try:
+        # add the transect ID field to the transects if it doesn't already exist.
         arcpy.AddField_management(in_fc, sortfield, 'SHORT')
     except:
         pass
     if not len(sort_lines):
+        # If sort_lines is blank ([]),
         base_fc, ct = SortTransectsByFeature(in_fc, 0, sort_lines, [1, sort_corner], sortfield)
     else:
+        #
         sort_lines_arr = arcpy.da.FeatureClassToNumPyArray(sort_lines, ['sort', 'sort_corn'])
         base_fc, ct = SortTransectsByFeature(in_fc, 0, sort_lines, sort_lines_arr[0])
         for row in sort_lines_arr[1:]:
             next_fc, ct = SortTransectsByFeature(in_fc, ct, sort_lines, row)
-            arcpy.Append_management(next_fc, base_fc)
+            arcpy.Append_management(next_fc, base_fc) # Append each new FC to the base.
     # arcpy.FeatureClassToFeatureClass_conversion(base_fc, arcpy.env.workspace, out_fc)
     SetStartValue(base_fc, out_fc, sortfield, start=1)
     return(out_fc)

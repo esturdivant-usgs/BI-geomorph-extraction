@@ -17,14 +17,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import arcpy
-import pythonaddins
-# path to TransectExtraction module
-script_path = r"\\Mac\Home\GitHub\plover_transect_extraction\TransectExtraction"
-sys.path.append(script_path) # path to TransectExtraction module
 import functions_warcpy as fwa
 from setvars import *
-
-start = time.clock()
 
 """
 Dunes and armoring
@@ -82,6 +76,7 @@ trans_extended = os.path.join(arcpy.env.scratchGDB, 'trans_ext_temp')
 trans_sort_1 = os.path.join(arcpy.env.scratchGDB, 'trans_sort_temp')
 trans_x = os.path.join(arcpy.env.scratchGDB, 'overlap_points_temp')
 overlapTrans_lines = os.path.join(arcpy.env.scratchGDB, 'overlapTrans_lines_temp')
+sort_lines =  os.path.join(arcpy.env.scratchGDB, 'sort_lines')
 
 #%% 1. Extend and Copy only the geometry of transects to use as material for filling gaps
 fwa.ExtendLine(fc=orig_trans, new_fc=trans_extended, distance=extendlength, proj_code=proj_code)

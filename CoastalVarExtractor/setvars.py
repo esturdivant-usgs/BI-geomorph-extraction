@@ -2,36 +2,27 @@
 Configuration file for DeepDive Transect Extraction (CoastalVarExtractor module)
 Author: Emily Sturdivant
 email: esturdivant@usgs.gov;
+
+Designed to be imported by either prepper.py or extractor.py.
 '''
 import os
 import sys
-if sys.platform == 'win32':
-    script_path = r"\\Mac\Home\GitHub\plover_transect_extraction\TransectExtraction"
-    sys.path.append(script_path) # path to TransectExtraction module
-    import arcpy
-if sys.platform == 'darwin':
-    script_path = '/Users/esturdivant/GitHub/plover_transect_extraction/TransectExtraction'
-    sys.path.append(script_path)
-from TE_siteyear_configmap import *
+import arcpy
+from configmap import *
 
 ############ Inputs #########################
-site = 'Assateague'
-site = 'ParkerRiver'
-site = 'Monomoy'
-site = 'CoastGuard'
-site = 'FireIsland'
-# site = 'Forsythe'
-# site = 'Cedar'
-year = '2014'
-
-SiteYear_strings = siteyear[site+year]
-
-overwrite_Z = False
-
-
+# site = 'FireIsland'
+# year = '2014'
+# proj_dir = r'\\Mac\stor\Projects\TransectExtraction\{}'.format(site+year)
+if __name__ == '__main__':
+    proj_dir = input("Path to project directory (e.g. \\\Mac\stor\Projects\TransectExtraction\FireIsland2014): ")
+    site = input("site: ")
+    year = input("year: ")
+else:
+    from __main__ import *
+SiteYear_strings = siteyear[site+year] # get siteyear dict from configmap
 
 ######## Set-up project folder ################################################################
-proj_dir = os.path.join(r'\\Mac', 'stor', 'Projects', 'TransectExtraction', '{}'.format(site+year))
 home = os.path.join(proj_dir, '{site}{year}.gdb'.format(**SiteYear_strings))
 scratch_dir = os.path.join(proj_dir, 'scratch')
 final_dir = os.path.join(proj_dir, 'Extracted_Data')
@@ -40,29 +31,29 @@ try:
 except OSError:
     if not os.path.isdir(proj_dir):
         raise
+arcpy.env.workspace = home
+arcpy.env.scratchWorkspace = proj_dir
+
+# Set environments
+arcpy.env.overwriteOutput = True 						# Overwrite output?
+arcpy.CheckOutExtension("Spatial") 						# Checkout Spatial Analysis extension
 
 ######## Set paths ################################################################
 if SiteYear_strings['region'] == 'Massachusetts' or SiteYear_strings['region'] == 'RhodeIsland' or SiteYear_strings['region'] == 'Maine':
     proj_code = 26919 # "NAD 1983 UTM Zone 19N"
 else:
     proj_code = 26918 # "NAD 1983 UTM Zone 18N"
-
-######## Set environments ##########
-arcpy.env.overwriteOutput = True 						# Overwrite output?
-arcpy.CheckOutExtension("Spatial") 						# Checkout Spatial Analysis extension
-arcpy.env.workspace = home
-arcpy.env.scratchWorkspace = proj_dir
 # Spatial references
 nad83 = arcpy.SpatialReference(4269)
 utmSR = arcpy.SpatialReference(proj_code)
 
 ########### Default Values ##########################
-tID_fld = "sort_ID"
-pID_fld = "SplitSort"
-extendlength = 3000                      # extended transects distance (m) IF NEEDED
-fill = -99999	  					# Replace Nulls with
-cell_size = 5
-pt2trans_disttolerance = 25        # Maximum distance that point can be from transect and still be joined; originally 10 m
+tID_fld = "sort_ID"                      # name of transect ID field
+pID_fld = "SplitSort"                    # name of point ID field
+extendlength = 3000                      # distance (m) by which to extend transects
+fill = -99999                            # Nulls will be replaced with this fill value
+cell_size = 5                            # Cell size for raster outputs
+pt2trans_disttolerance = 25              # Maximum distance between transect and point for assigning values; originally 10 m
 if SiteYear_strings['site'] == 'Monomoy':
     maxDH = 3
 else:
@@ -81,22 +72,20 @@ dhPts = '{site}{year}_DHpts'.format(**SiteYear_strings)				# Dune crest
 dlPts = '{site}{year}_DLpts'.format(**SiteYear_strings) 		  # Dune toe
 elevGrid = '{site}{year}_DEM'.format(**SiteYear_strings)				# Elevation
 
-############# Intermediate products ####################
-bndMTL = '{site}{year}_bndpoly_mtl'.format(**SiteYear_strings)
-bndMHW = '{site}{year}_bndpoly_mhw'.format(**SiteYear_strings)
-bndpoly = '{site}{year}_bndpoly'.format(**SiteYear_strings)
-
 ############## Outputs ###############################
-inletLines = '{site}{year}_inletLines'.format(**SiteYear_strings)
-armorLines = '{site}{year}_armor'.format(**SiteYear_strings)
+inletLines = '{site}{year}_inletLines'.format(**SiteYear_strings)         # delineated inlets
+armorLines = '{site}{year}_armor'.format(**SiteYear_strings)              # delineated shorefront armoring to suplement dlows
+bndMTL = '{site}{year}_bndpoly_mtl'.format(**SiteYear_strings)            # polygon at MTL contour line; intermediate product
+bndMHW = '{site}{year}_bndpoly_mhw'.format(**SiteYear_strings)            # polygon at MHW contour line; intermediate product
+bndpoly = '{site}{year}_bndpoly'.format(**SiteYear_strings)               # polygon combined MTL and MHW contour line; before snapped to SLpts
 barrierBoundary = '{site}{year}_bndpoly_2sl'.format(**SiteYear_strings)   # Barrier Boundary polygon; create with TE_createBoundaryPolygon.py
-dh2trans = '{site}{year}_DH2trans'.format(**SiteYear_strings)							# DHigh within 10m
-dl2trans = '{site}{year}_DL2trans'.format(**SiteYear_strings)						# DLow within 10m
-arm2trans = '{site}{year}_arm2trans'.format(**SiteYear_strings)
-shl2trans = '{site}{year}_SHL2trans'.format(**SiteYear_strings)							# beach slope from lidar within 10m of transect
-shoreline = '{site}{year}_ShoreBetweenInlets'.format(**SiteYear_strings)        # Complete shoreline ready to become route in Pt. 2
-elevGrid_5m = elevGrid+'_5m'				# Elevation
-slopeGrid = '{site}{year}_slope_5m'.format(**SiteYear_strings)
+dh2trans = '{site}{year}_DH2trans'.format(**SiteYear_strings)             # DHigh within 25 m
+dl2trans = '{site}{year}_DL2trans'.format(**SiteYear_strings)             # DLow within 25 m
+arm2trans = '{site}{year}_arm2trans'.format(**SiteYear_strings)           # XYZ position of armoring along transect
+shl2trans = '{site}{year}_SHL2trans'.format(**SiteYear_strings)           # beach slope from lidar within 10m of transect
+shoreline = '{site}{year}_ShoreBetweenInlets'.format(**SiteYear_strings)  # Complete shoreline ready to become route in Pt. 2
+elevGrid_5m = elevGrid+'_5m'                                              # Elevation resampled to 5 m grids
+slopeGrid = '{site}{year}_slope_5m'.format(**SiteYear_strings)            # Slope in 5 m grids
 
 # Transects
 extendedTransects = '{site}{year}_extTrans_working'.format(**SiteYear_strings)
@@ -149,3 +138,6 @@ extra_fields = ["StartX", "StartY", "ORIG_FID", "Autogen", "ProcTime",
                 "SHAPE_Leng", "OBJECTID_1", "Shape_Length", "EndX", "EndY",
                 "BaselineID", "OBJECTID", "ORIG_OID", "TRANSORDER_1"]
 extra_fields += [x.upper() for x in extra_fields]
+
+if not __name__ == '__main__':
+    print("setvars.py initialized variables.")
