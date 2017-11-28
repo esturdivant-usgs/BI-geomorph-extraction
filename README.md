@@ -15,7 +15,7 @@ email: esturdivant@usgs.gov; bgutierrez@usgs.gov
     - shoreline points
     - DEM
     
-2. Update values in setvars.py.
+2. Update values in setvars.py if needed.
 
 3. Interactively run prepper.py in the Python console in ArcGIS Pro to make some of the input files. There are steps in the process that must be completed manually. Notes in the script describe the procedure for creating them. 
     - inlet lines <- DEM + **manual**
