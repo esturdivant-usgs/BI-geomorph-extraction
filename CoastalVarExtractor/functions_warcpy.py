@@ -20,6 +20,29 @@ import functions as fun
 """
 # General use functions
 """
+def SetInputFCname(inFCname, varname='', system_ext=True):
+    # Look for input feature class name in workspace and prompt for different name if not found.
+    if len(varname) < 1:
+        varname = inFCname
+    if arcpy.Exists(inFCname):
+        inFCname = inFCname
+    else:
+        FCname = input("{} file (e.g. {} or '0' for none): ".format(varname, inFCname))
+        if FCname == '0':
+            FCname = False
+        elif not arcpy.Exists(FCname):
+            FCname = input("'{}' doesn't exist in the workspace. Try again. \n{} file: ".format(FCname, varname, inFCname))
+            if FCname == '0':
+                FCname = False
+        if FCname:
+            inFCname = os.path.basename(FCname)
+        else:
+            print('No data selected for {}.'.format(inFCname))
+            inFCname = False
+            if system_ext:
+                raise SystemExit
+    return inFCname
+
 def unique_values(table, field):
     # return sorted unique values in field
     data = arcpy.da.TableToNumPyArray(table, [field])

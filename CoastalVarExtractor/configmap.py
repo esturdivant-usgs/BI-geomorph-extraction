@@ -37,3 +37,46 @@ siteyear = {
                     'year': '2014', 'code': 'fi14',
                     'MHW':0.46, 'MLW':-1.01, 'MTL':None}
     }
+
+########### Default Values ##########################
+tID_fld = "sort_ID"                      # name of transect ID field
+pID_fld = "SplitSort"                    # name of point ID field
+extendlength = 3000                      # distance (m) by which to extend transects
+fill = -99999                            # Nulls will be replaced with this fill value
+cell_size = 5                            # Cell size for raster outputs
+pt2trans_disttolerance = 25              # Maximum distance between transect and point for assigning values; originally 10 m
+
+########### Field names ##########################
+trans_flds0 = ['sort_ID','TRANSORDER', 'TRANSECTID', 'LRR', 'LR2', 'LSE', 'LCI90']
+trans_flds_arc = ['SL_Lat', 'SL_Lon', 'SL_x', 'SL_y', 'Bslope',
+    'DL_Lat', 'DL_Lon', 'DL_x', 'DL_y', 'DL_z', 'DL_zMHW',
+    'DH_Lat', 'DH_Lon', 'DH_x', 'DH_y', 'DH_z', 'DH_zMHW',
+    'Arm_Lat', 'Arm_Lon', 'Arm_x', 'Arm_y', 'Arm_z', 'Arm_zMHW',
+    'DistDH', 'DistDL', 'DistArm',
+    'Dist2Inlet', 'WidthPart', 'WidthLand', 'WidthFull']
+trans_flds_arc = ['SL_x', 'SL_y', 'Bslope',
+    'DL_x', 'DL_y', 'DL_z', 'DL_zMHW', 'DL_snapX','DL_snapY',
+    'DH_x', 'DH_y', 'DH_z', 'DH_zMHW', 'DH_snapX','DH_snapY',
+    'Arm_x', 'Arm_y', 'Arm_z', 'Arm_zMHW',
+    'DistDH', 'DistDL', 'DistArm',
+    'Dist2Inlet', 'WidthPart', 'WidthLand', 'WidthFull']
+trans_flds_pd = ['uBW', 'uBH', 'ub_feat', 'mean_Zmhw', 'max_Zmhw']
+pt_flds_arc = ['ptZ', 'ptSlp']
+pt_flds_pd = ['seg_x', 'seg_y', 'Dist_Seg','SplitSort',
+    'Dist_MHWbay', 'DistSegDH', 'DistSegDL', 'DistSegArm', 'ptZmhw']
+
+pt_flds = pt_flds_arc + pt_flds_pd + [tID_fld]
+trans_flds = trans_flds0 + trans_flds_arc + trans_flds_pd
+
+extra_fields = ["StartX", "StartY", "ORIG_FID", "Autogen", "ProcTime",
+                "SHAPE_Leng", "OBJECTID_1", "Shape_Length", "EndX", "EndY",
+                "BaselineID", "OBJECTID", "ORIG_OID", "TRANSORDER_1"]
+extra_fields += [x.upper() for x in extra_fields]
+
+########### Temp file names ##########################
+trans_presort = os.path.join(arcpy.env.scratchGDB, 'trans_presort_temp')
+trans_extended = os.path.join(arcpy.env.scratchGDB, 'trans_ext_temp')
+trans_sort_1 = os.path.join(arcpy.env.scratchGDB, 'trans_sort_temp')
+trans_x = os.path.join(arcpy.env.scratchGDB, 'overlap_points_temp')
+overlapTrans_lines = os.path.join(arcpy.env.scratchGDB, 'overlapTrans_lines_temp')
+sort_lines =  os.path.join(arcpy.env.scratchGDB, 'sort_lines')
