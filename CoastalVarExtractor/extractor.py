@@ -21,12 +21,11 @@ import arcpy
 # path to TransectExtraction module
 script_path = r"X:\Projects\DeepDive\BI-geomorph-extraction"
 sys.path.append(script_path) # path to TransectExtraction module
-import functions_warcpy as fwa
-from setvars import *
-import functions as fun
+import CoastalVarExtractor.functions_warcpy as fwa
+from CoastalVarExtractor.setvars import *
+import CoastalVarExtractor.functions as fun
 
 #%% ####### Run ###############################################################
-start = time.clock()
 """
 SPATIAL: transects
 """
