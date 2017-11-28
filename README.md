@@ -22,13 +22,19 @@ email: esturdivant@usgs.gov; bgutierrez@usgs.gov
     - armoring lines <- ortho + **manual**
     - boundary polygon <- DEM + shoreline points + inlet lines (+ manual)
     - oceanside MHW shore between inlets <- boundary polygon + inlets 
-    - supplemented and sorted transects <- script + **manual**
+    - supplemented and sorted transects <- script + **manual**; Sorting is only semi-automated and tricky. See explanations below/in prepper.ipynb.
     - 'tidied' extended transects <- script + **manual**
-    
-* Sorting can be tricky. I'll need to provide lots of explanation for this step. #TODO
 
 4. QA/QC/cross-check everything thoroughly: projections, agreement, etc. Preferred projection is NAD83, Meters - Albers or UTM Zone 18N or 19N depending on region of Atlantic coast.
 
-5. Run extractor.py.
+5. Run extractor.ipynb.
 
 ## Notes about using ArcPy
+
+Jupyter notebook files must be run within the ArcGIS Pro conda environment. To do so, type the following in your command prompt (assuming it has the default set-up and substituting path\to\dir with the location of the repository):
+
+```
+cd path\to\dir\BI-geomorph-extraction
+\ArcGIS\Pro\bin\Python\Scripts\proenv
+jupyter notebook
+```
