@@ -3,7 +3,7 @@ Configuration file for DeepDive Transect Extraction (CoastalVarExtractor module)
 Author: Emily Sturdivant
 email: esturdivant@usgs.gov;
 
-Designed to be imported by either prepper.py or extractor.py.
+Designed to be imported by either prepper.ipynb or extractor.py.
 '''
 import os
 import sys
@@ -14,23 +14,41 @@ from configmap import *
 # site = 'FireIsland'
 # year = '2014'
 # proj_dir = r'\\Mac\stor\Projects\TransectExtraction\{}'.format(site+year)
-if __name__ == '__main__':
+try:
+    input_possible = input('Does this interpretter allow for string input? ')
+    input_possible = True
+except:
+    input_possible = False
+
+if input_possible:
     proj_dir = input("Path to project directory (e.g. \\\Mac\stor\Projects\TransectExtraction\FireIsland2014): ")
+    if not os.path.isdir(proj_dir):
+        reply = input("'{}' not recognized as folder. Do you want to create it (y/n)? ".format(proj_dir))
+        if reply == 'y':
+            try:
+                os.makedirs(proj_dir)
+            except OSError:
+                if not os.path.isdir(proj_dir):
+                    raise
+        else:
+            sys.exit("Operation cancelled so you can get the project folder squared away.")
+
     site = input("site: ")
     year = input("year: ")
 else:
-    from __main__ import *
+    proj_dir = ""
+    site = ""
+    year = ""
+    if len(proj_dir) < 1:
+        print("Looks like we can't prompt for user input so you'll need to manually enter values into the module.")
+        raise
+
 SiteYear_strings = siteyear[site+year] # get siteyear dict from configmap
 
-######## Set-up project folder ################################################################
+######## Set-up project folder ################################################
 home = os.path.join(proj_dir, '{site}{year}.gdb'.format(**SiteYear_strings))
 scratch_dir = os.path.join(proj_dir, 'scratch')
 final_dir = os.path.join(proj_dir, 'Extracted_Data')
-try:
-    os.makedirs(proj_dir)
-except OSError:
-    if not os.path.isdir(proj_dir):
-        raise
 arcpy.env.workspace = home
 arcpy.env.scratchWorkspace = proj_dir
 
@@ -38,7 +56,21 @@ arcpy.env.scratchWorkspace = proj_dir
 arcpy.env.overwriteOutput = True 						# Overwrite output?
 arcpy.CheckOutExtension("Spatial") 						# Checkout Spatial Analysis extension
 
-######## Set paths ################################################################
+########### Input files ##########################
+orig_trans = '{site}_LTorig'.format(**SiteYear_strings)
+ShorelinePts = '{site}{year}_SLpts'.format(**SiteYear_strings)
+dhPts = '{site}{year}_DHpts'.format(**SiteYear_strings)				# Dune crest
+dlPts = '{site}{year}_DLpts'.format(**SiteYear_strings) 		  # Dune toe
+elevGrid = '{site}{year}_DEM'.format(**SiteYear_strings)				# Elevation
+
+if input_possible:
+    orig_trans = SetInputFCname(orig_trans, 'original NASC transects', system_ext=True)
+    ShorelinePts = SetInputFCname(ShorelinePts, 'shoreline points', system_ext=True)
+    dhPts = SetInputFCname(dhPts, 'dune crest (dhigh) points', system_ext=True)
+    dlPts = SetInputFCname(dhPts, 'dune toe (dlow) points', system_ext=True)
+    elevGrid = SetInputFCname(elevGrid, 'DEM', system_ext=True)
+
+######## Set paths ###########################################################
 if SiteYear_strings['region'] == 'Massachusetts' or SiteYear_strings['region'] == 'RhodeIsland' or SiteYear_strings['region'] == 'Maine':
     proj_code = 26919 # "NAD 1983 UTM Zone 19N"
 else:
@@ -48,12 +80,6 @@ nad83 = arcpy.SpatialReference(4269)
 utmSR = arcpy.SpatialReference(proj_code)
 
 ########### Default Values ##########################
-tID_fld = "sort_ID"                      # name of transect ID field
-pID_fld = "SplitSort"                    # name of point ID field
-extendlength = 3000                      # distance (m) by which to extend transects
-fill = -99999                            # Nulls will be replaced with this fill value
-cell_size = 5                            # Cell size for raster outputs
-pt2trans_disttolerance = 25              # Maximum distance between transect and point for assigning values; originally 10 m
 if SiteYear_strings['site'] == 'Monomoy':
     maxDH = 3
 else:
@@ -64,13 +90,6 @@ MLW = SiteYear_strings['MLW']
 dMHW = -MHW                         # Beach height adjustment
 oMLW = MHW-MLW                      # MLW offset from MHW # Beach height adjustment (relative to MHW)
 SiteYear_strings['MTL'] = MTL = (MHW+MLW)/2
-
-########### Default inputs ##########################
-orig_trans = '{site}_LTorig'.format(**SiteYear_strings)
-ShorelinePts = '{site}{year}_SLpts'.format(**SiteYear_strings)
-dhPts = '{site}{year}_DHpts'.format(**SiteYear_strings)				# Dune crest
-dlPts = '{site}{year}_DLpts'.format(**SiteYear_strings) 		  # Dune toe
-elevGrid = '{site}{year}_DEM'.format(**SiteYear_strings)				# Elevation
 
 ############## Outputs ###############################
 inletLines = '{site}{year}_inletLines'.format(**SiteYear_strings)         # delineated inlets
@@ -111,33 +130,6 @@ rst_transPopulated = "{site}{year}_rstTrans_populated".format(**SiteYear_strings
 rst_transgrid_path = os.path.join(scratch_dir, "{code}_trans".format(**SiteYear_strings))
 rst_bwgrid_path = os.path.join(home, "{code}".format(**SiteYear_strings))
 bw_rst="{code}_ubw".format(**SiteYear_strings)
-
-########### Field names ##########################
-trans_flds0 = ['sort_ID','TRANSORDER', 'TRANSECTID', 'LRR', 'LR2', 'LSE', 'LCI90']
-trans_flds_arc = ['SL_Lat', 'SL_Lon', 'SL_x', 'SL_y', 'Bslope',
-    'DL_Lat', 'DL_Lon', 'DL_x', 'DL_y', 'DL_z', 'DL_zMHW',
-    'DH_Lat', 'DH_Lon', 'DH_x', 'DH_y', 'DH_z', 'DH_zMHW',
-    'Arm_Lat', 'Arm_Lon', 'Arm_x', 'Arm_y', 'Arm_z', 'Arm_zMHW',
-    'DistDH', 'DistDL', 'DistArm',
-    'Dist2Inlet', 'WidthPart', 'WidthLand', 'WidthFull']
-trans_flds_arc = ['SL_x', 'SL_y', 'Bslope',
-    'DL_x', 'DL_y', 'DL_z', 'DL_zMHW', 'DL_snapX','DL_snapY',
-    'DH_x', 'DH_y', 'DH_z', 'DH_zMHW', 'DH_snapX','DH_snapY',
-    'Arm_x', 'Arm_y', 'Arm_z', 'Arm_zMHW',
-    'DistDH', 'DistDL', 'DistArm',
-    'Dist2Inlet', 'WidthPart', 'WidthLand', 'WidthFull']
-trans_flds_pd = ['uBW', 'uBH', 'ub_feat', 'mean_Zmhw', 'max_Zmhw']
-pt_flds_arc = ['ptZ', 'ptSlp']
-pt_flds_pd = ['seg_x', 'seg_y', 'Dist_Seg','SplitSort',
-    'Dist_MHWbay', 'DistSegDH', 'DistSegDL', 'DistSegArm', 'ptZmhw']
-
-pt_flds = pt_flds_arc + pt_flds_pd + [tID_fld]
-trans_flds = trans_flds0 + trans_flds_arc + trans_flds_pd
-
-extra_fields = ["StartX", "StartY", "ORIG_FID", "Autogen", "ProcTime",
-                "SHAPE_Leng", "OBJECTID_1", "Shape_Length", "EndX", "EndY",
-                "BaselineID", "OBJECTID", "ORIG_OID", "TRANSORDER_1"]
-extra_fields += [x.upper() for x in extra_fields]
 
 if not __name__ == '__main__':
     print("setvars.py initialized variables.")
