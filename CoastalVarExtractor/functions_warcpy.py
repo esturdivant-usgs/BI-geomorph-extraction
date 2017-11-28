@@ -15,7 +15,7 @@ import numpy as np
 from operator import add
 import sys
 import arcpy
-import functions as fun
+import CoastalVarExtractor.functions as fun
 
 """
 # General use functions

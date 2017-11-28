@@ -8,7 +8,7 @@ Designed to be imported by either prepper.ipynb or extractor.py.
 import os
 import sys
 import arcpy
-from configmap import *
+from CoastalVarExtractor.configmap import *
 
 ############ Inputs #########################
 # site = 'FireIsland'
