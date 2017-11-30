@@ -9,44 +9,42 @@ import os
 import sys
 import arcpy
 from CoastalVarExtractor.configmap import *
+import CoastalVarExtractor.functions_warcpy as fwa
 
 ############ Inputs #########################
 # site = 'FireIsland'
 # year = '2014'
 # proj_dir = r'\\Mac\stor\Projects\TransectExtraction\{}'.format(site+year)
-try:
-    input_possible = input('Does this interpretter allow for string input? ')
-    input_possible = True
-except:
-    input_possible = False
+# try:
+#     input_possible = input('Does this interpretter allow for string input? ')
+#     input_possible = True
+# except:
+#     input_possible = False
+#
+# if input_possible:
+#     proj_dir = input("Path to project directory (e.g. \\\Mac\stor\Projects\TransectExtraction\FireIsland2014): ")
+#     if not os.path.isdir(proj_dir):
+#         sys.exit("'{}' not recognized as folder. Operation cancelled so you can get the project folder squared away.".format(proj_dir))
+#     site = input("site: ")
+#     year = input("year: ")
+# else:
+#     proj_dir = ""
+#     site = ""
+#     year = ""
+#     if len(proj_dir) < 1:
+#         print("Looks like we can't prompt for user input so you'll need to manually enter values into the module.")
+#         raise
+# SiteYear_strings = siteyear[site+year] # get siteyear dict from configmap
 
-if input_possible:
-    proj_dir = input("Path to project directory (e.g. \\\Mac\stor\Projects\TransectExtraction\FireIsland2014): ")
-    if not os.path.isdir(proj_dir):
-        reply = input("'{}' not recognized as folder. Do you want to create it (y/n)? ".format(proj_dir))
-        if reply == 'y':
-            try:
-                os.makedirs(proj_dir)
-            except OSError:
-                if not os.path.isdir(proj_dir):
-                    raise
-        else:
-            sys.exit("Operation cancelled so you can get the project folder squared away.")
-
-    site = input("site: ")
-    year = input("year: ")
-else:
-    proj_dir = ""
-    site = ""
-    year = ""
-    if len(proj_dir) < 1:
-        print("Looks like we can't prompt for user input so you'll need to manually enter values into the module.")
-        raise
-
+proj_dir = r"\\Mac\stor\Projects\TransectExtraction\Fisherman2014"
+site = "Fisherman"
+year = "2014"
 SiteYear_strings = siteyear[site+year] # get siteyear dict from configmap
+home = os.path.join(proj_dir, '{site}{year}.gdb'.format(**SiteYear_strings))
+
 
 ######## Set-up project folder ################################################
-home = os.path.join(proj_dir, '{site}{year}.gdb'.format(**SiteYear_strings))
+# home = os.path.join(proj_dir, '{site}{year}.gdb'.format(**SiteYear_strings))
 scratch_dir = os.path.join(proj_dir, 'scratch')
 final_dir = os.path.join(proj_dir, 'Extracted_Data')
 arcpy.env.workspace = home
@@ -63,12 +61,12 @@ dhPts = '{site}{year}_DHpts'.format(**SiteYear_strings)				# Dune crest
 dlPts = '{site}{year}_DLpts'.format(**SiteYear_strings) 		  # Dune toe
 elevGrid = '{site}{year}_DEM'.format(**SiteYear_strings)				# Elevation
 
-if input_possible:
-    orig_trans = SetInputFCname(orig_trans, 'original NASC transects', system_ext=True)
-    ShorelinePts = SetInputFCname(ShorelinePts, 'shoreline points', system_ext=True)
-    dhPts = SetInputFCname(dhPts, 'dune crest (dhigh) points', system_ext=True)
-    dlPts = SetInputFCname(dhPts, 'dune toe (dlow) points', system_ext=True)
-    elevGrid = SetInputFCname(elevGrid, 'DEM', system_ext=True)
+# if input_possible:
+#     orig_trans = fwa.SetInputFCname(orig_trans, 'original NASC transects', system_ext=True)
+#     ShorelinePts = fwa.SetInputFCname(ShorelinePts, 'shoreline points', system_ext=True)
+#     dhPts = fwa.SetInputFCname(dhPts, 'dune crest (dhigh) points', system_ext=True)
+#     dlPts = fwa.SetInputFCname(dhPts, 'dune toe (dlow) points', system_ext=True)
+#     elevGrid = fwa.SetInputFCname(elevGrid, 'DEM', system_ext=True)
 
 ######## Set paths ###########################################################
 if SiteYear_strings['region'] == 'Massachusetts' or SiteYear_strings['region'] == 'RhodeIsland' or SiteYear_strings['region'] == 'Maine':
@@ -94,9 +92,9 @@ SiteYear_strings['MTL'] = MTL = (MHW+MLW)/2
 ############## Outputs ###############################
 inletLines = '{site}{year}_inletLines'.format(**SiteYear_strings)         # delineated inlets
 armorLines = '{site}{year}_armor'.format(**SiteYear_strings)              # delineated shorefront armoring to suplement dlows
-bndMTL = '{site}{year}_bndpoly_mtl'.format(**SiteYear_strings)            # polygon at MTL contour line; intermediate product
-bndMHW = '{site}{year}_bndpoly_mhw'.format(**SiteYear_strings)            # polygon at MHW contour line; intermediate product
-bndpoly = '{site}{year}_bndpoly'.format(**SiteYear_strings)               # polygon combined MTL and MHW contour line; before snapped to SLpts
+# bndMTL = '{site}{year}_bndpoly_mtl'.format(**SiteYear_strings)            # polygon at MTL contour line; intermediate product
+# bndMHW = '{site}{year}_bndpoly_mhw'.format(**SiteYear_strings)            # polygon at MHW contour line; intermediate product
+# bndpoly = '{site}{year}_bndpoly'.format(**SiteYear_strings)               # polygon combined MTL and MHW contour line; before snapped to SLpts
 barrierBoundary = '{site}{year}_bndpoly_2sl'.format(**SiteYear_strings)   # Barrier Boundary polygon; create with TE_createBoundaryPolygon.py
 dh2trans = '{site}{year}_DH2trans'.format(**SiteYear_strings)             # DHigh within 25 m
 dl2trans = '{site}{year}_DL2trans'.format(**SiteYear_strings)             # DLow within 25 m
@@ -107,9 +105,9 @@ elevGrid_5m = elevGrid+'_5m'                                              # Elev
 slopeGrid = '{site}{year}_slope_5m'.format(**SiteYear_strings)            # Slope in 5 m grids
 
 # Transects
+extendedTrans = "{site}{year}_extTrans".format(**SiteYear_strings) # Created MANUALLY: see TransExtv4Notes.txt
 extendedTransects = '{site}{year}_extTrans_working'.format(**SiteYear_strings)
 extTrans_tidy = "{site}_tidyTrans".format(**SiteYear_strings)
-extendedTrans = "{site}{year}_extTrans".format(**SiteYear_strings) # Created MANUALLY: see TransExtv4Notes.txt
 tidy_clipped = "{site}{year}_tidyTrans_clipped".format(**SiteYear_strings)
 extTrans_fill = '{site}{year}_extTrans_fill'.format(**SiteYear_strings)
 extTrans_null = '{site}{year}_extTrans_null'.format(**SiteYear_strings)

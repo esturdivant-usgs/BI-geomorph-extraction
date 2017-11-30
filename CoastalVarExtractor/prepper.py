@@ -1,5 +1,7 @@
 
 '''
+OUTDATED. Operation now takes place in prepper.ipynb
+
 Preprocessing for extracting barrier island metrics along transects
 Requires: python 3, ArcPy
 Author: Emily Sturdivant
@@ -50,7 +52,7 @@ Shoreline
 """
 #%% BOUNDARY POLYGON
 # Inlet lines must intersect MHW
-bndpoly = fwa.DEMtoFullShorelinePoly(elevGrid_5m, '{site}{year}'.format(**SiteYear_strings), MTL, MHW, inletLines, ShorelinePts)
+bndpoly = fwa.DEMtoFullShorelinePoly(elevGrid_5m, MTL, MHW, inletLines, ShorelinePts)
 # Eliminate any remnant polygons on oceanside
 print('Select features from {} that should not be included in {}'.format(bndpoly, barrierBoundary))
 exit()

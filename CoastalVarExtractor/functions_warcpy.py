@@ -107,25 +107,25 @@ def CopyAndWipeFC(in_fc, out_fc, preserveflds=[]):
             cursor.updateRow([None] * len(row))
     return out_fc
 
-# def AddNewFields(fc,fieldlist,fieldtype="DOUBLE", verbose=True):
-#     # Add fields to FC if they do not already exist. New fields must all be the same type.
-#     # print('Adding fields to {} as type {} if they do not already exist.'.format(out_fc, fieldtype))
-#     def AddNewField(fc, newfname, fieldtype, verbose):
-#         # Add single new field
-#         if not fieldExists(fc, newfname):
-#             arcpy.AddField_management(fc, newfname, fieldtype)
-#             if verbose:
-#                 print('Added {} field to {}'.format(newfname, fc))
-#         return fc
-#     # Execute for multiple fields
-#     if type(fieldlist) is str:
-#         AddNewField(fc, fieldlist, fieldtype, verbose)
-#     elif type(fieldlist) is list or type(fieldlist) is tuple:
-#         for newfname in fieldlist:
-#             AddNewField(fc, newfname, fieldtype, verbose)
-#     else:
-#         print("fieldlist accepts string, list, or tuple of field names. {} type not accepted.".format(type(fieldlist)))
-#     return fc
+def AddNewFields(fc,fieldlist,fieldtype="DOUBLE", verbose=True):
+    # Add fields to FC if they do not already exist. New fields must all be the same type.
+    # print('Adding fields to {} as type {} if they do not already exist.'.format(out_fc, fieldtype))
+    def AddNewField(fc, newfname, fieldtype, verbose):
+        # Add single new field
+        if not fieldExists(fc, newfname):
+            arcpy.AddField_management(fc, newfname, fieldtype)
+            if verbose:
+                print('Added {} field to {}'.format(newfname, fc))
+        return fc
+    # Execute for multiple fields
+    if type(fieldlist) is str:
+        AddNewField(fc, fieldlist, fieldtype, verbose)
+    elif type(fieldlist) is list or type(fieldlist) is tuple:
+        for newfname in fieldlist:
+            AddNewField(fc, newfname, fieldtype, verbose)
+    else:
+        print("fieldlist accepts string, list, or tuple of field names. {} type not accepted.".format(type(fieldlist)))
+    return fc
 
 def DeleteExtraFields(inTable, keepfields=[]):
     fldsToDelete = [x.name for x in arcpy.ListFields(inTable) if not x.required] # list all fields that are not required in the FC (e.g. OID@)
@@ -423,8 +423,38 @@ def PreprocessTransects(site,old_transects=False,sort_corner='LL',sortfield='sor
     ExtendLine(new_transects,extTransects,distance)
     return extTransects
 
+def CreateShoreBetweenInlets(shore_delineator, inletLines, out_line, ShorelinePts, proj_code=26918, verbose=True):
+    # initialize temp layer names
+    split = os.path.join(arcpy.env.scratchGDB, 'shoreline_split')
+    # Ready layers for processing
+    DeleteExtraFields(inletLines)
+    DeleteExtraFields(shore_delineator)
+    shore_delineator = ReProject(shore_delineator,shore_delineator+'_utm',proj_code) # Problems projecting
+    typeFC = arcpy.Describe(shore_delineator).shapeType
+    if typeFC == "Point" or typeFC =='Multipoint':
+        line_temp = os.path.join(arcpy.env.scratchGDB, 'shoreline_line')
+        shore_temp = os.path.join(arcpy.env.scratchGDB, 'shoreline_shore')
+        # Create shoreline from shoreline points
+        arcpy.PointsToLine_management(shore_delineator, line_temp)
+        shore_delineator = shore_temp
+        # Merge and then extend shoreline to inlet lines
+        arcpy.Merge_management([line_temp,inletLines],shore_delineator)
+        arcpy.ExtendLine_edit(shore_delineator,'500 Meters')
+    # Eliminate extra lines, e.g. bayside, based on presence of SHLpts
+    if verbose:
+        print("Splitting {} at inlets...".format(shore_delineator))
+    arcpy.Delete_management(split) # delete if already exists
+    arcpy.FeatureToLine_management([shore_delineator, inletLines], split)
+    # Delete any lines that are not intersected by a shoreline point.
+    if verbose:
+        print("Preserving only those line segments that intersect shoreline points...")
+    arcpy.SpatialJoin_analysis(split, ShorelinePts, split+'_join', "#","KEEP_COMMON", match_option="COMPLETELY_CONTAINS")
+    if verbose:
+        print("Dissolving the line to create {}...".format(out_line))
+    arcpy.Dissolve_management(split+'_join', out_line, [["FID_{}".format(shore_delineator)]])
+    return out_line
 
-def CreateShoreBetweenInlets(shore_delineator,inletLines, out_line, ShorelinePts, proj_code=26918):
+def CreateShoreBetweenInlets_old(shore_delineator,inletLines, out_line, ShorelinePts, proj_code=26918):
     # initialize temp layer names
     split_temp = os.path.join(arcpy.env.scratchGDB, 'split_temp')
     # Ready layers for processing
@@ -442,6 +472,7 @@ def CreateShoreBetweenInlets(shore_delineator,inletLines, out_line, ShorelinePts
         arcpy.Merge_management([line_temp,inletLines],shore_delineator)
         arcpy.ExtendLine_edit(shore_delineator,'500 Meters')
     # Eliminate extra lines, e.g. bayside, based on presence of SHLpts
+    arcpy.Delete_management(split_temp) # delete if already exists
     arcpy.FeatureToLine_management([shore_delineator, inletLines], split_temp)
     arcpy.SelectLayerByLocation_management("split_temp", "INTERSECT", ShorelinePts,'1 METERS')
     print('CHECK THIS PROCESS. Added Dissolve operation to CreateShore... and so far it has not been tested.')
@@ -450,7 +481,6 @@ def CreateShoreBetweenInlets(shore_delineator,inletLines, out_line, ShorelinePts
 
 def RasterToLandPerimeter(in_raster, out_polygon, threshold, agg_dist='30 METERS', min_area='300 SquareMeters', min_hole_sz='300 SquareMeters', manualadditions=None):
     """ Raster to Polygon: DEM => Reclass => MHW line """
-    home = arcpy.env.workspace
     r2p = os.path.join(arcpy.env.scratchGDB, out_polygon+'_r2p_temp')
     r2p_union = os.path.join(arcpy.env.scratchGDB, out_polygon+'_r2p_union_temp')
 
@@ -463,64 +493,72 @@ def RasterToLandPerimeter(in_raster, out_polygon, threshold, agg_dist='30 METERS
         arcpy.AggregatePolygons_cartography(r2p_union, out_polygon, agg_dist, min_area, min_hole_sz)
     else:
         arcpy.AggregatePolygons_cartography(r2p, out_polygon, agg_dist, min_area, min_hole_sz)
-    return out_polygon
+    return(out_polygon)
 
 def CombineShorelinePolygons(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly):
     # Use MTL and MHW contour polygons to create full barrier island shoreline polygon; Shoreline at MHW on oceanside and MTL on bayside
     # Inlet lines must intersect the MHW polygon
+    symdiff = os.path.join(arcpy.env.scratchGDB, 'shore_symdiff')
+    split_lyrname = 'shore_split'
+    split = os.path.join(arcpy.env.scratchGDB, split_lyrname)
+    union_2 = os.path.join(arcpy.env.scratchGDB, 'shore_union')
+
+    # Create layer (symdiff) of land between MTL and MHW
+    arcpy.Delete_management(symdiff) # delete if already exists
+    arcpy.SymDiff_analysis(bndMTL, bndMHW, symdiff)
+    arcpy.FeatureToPolygon_management([symdiff, inletLines], split) # Split MTL features at inlets
+
+    # Select bayside MHW-MTL area, polygons that don't intersect shoreline points
+    with arcpy.da.UpdateCursor(split, ("SHAPE@")) as cursor:
+        for prow in cursor:
+            pgeom = prow[0]
+            for srow in arcpy.da.SearchCursor(ShorelinePts, ("SHAPE@")):
+                spt = srow[0] # point geometry
+                if not pgeom.disjoint(spt):
+                    cursor.deleteRow()
+    # Merge bayside MHW-MTL with above-MHW polygon
+    arcpy.Union_analysis([split, bndMHW], union_2)
+    arcpy.Dissolve_management(union_2, bndpoly, multi_part='SINGLE_PART') # Dissolve all features in union_2 to single part polygons
+    print('''\nUser input required! Select extra features in {} for deletion.\n
+        Recommended technique: select the polygon/s to keep and then Switch Selection.\n'''.format(bndpoly))
+    return(bndpoly)
+
+def CombineShorelinePolygons_old2(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly):
+    # Use MTL and MHW contour polygons to create full barrier island shoreline polygon; Shoreline at MHW on oceanside and MTL on bayside
+    # Inlet lines must intersect the MHW polygon
     symdiff = os.path.join(arcpy.env.scratchGDB, 'symdiff')
-    split = 'split_temp'
+    split_lyrname = 'split_temp'
+    split = os.path.join(arcpy.env.scratchGDB, 'split_temp')
     union_2 = os.path.join(arcpy.env.scratchGDB, 'union_2_temp')
 
     # Create layer (symdiff) of land between MTL and MHW
+    arcpy.Delete_management(symdiff) # delete if already exists
     arcpy.SymDiff_analysis(bndMTL, bndMHW, symdiff)
-    arcpy.FeatureToPolygon_management([symdiff, inletLines], os.path.join(arcpy.env.scratchGDB, split)) # Split MTL features at inlets
+    arcpy.FeatureToPolygon_management([symdiff, inletLines], split) # Split MTL features at inlets
 
     # Select bayside MHW-MTL area, polygons that don't intersect shoreline points
-    arcpy.SelectLayerByLocation_management(split, "INTERSECT", ShorelinePts, '#', "NEW_SELECTION")
-    arcpy.SelectLayerByLocation_management(split, "#", ShorelinePts, '#', "SWITCH_SELECTION")
-    # arcpy.FeatureClassToFeatureClass_conversion(split, arcpy.env.scratchGDB, 'mtlkeep')
-    arcpy.Union_analysis([split, bndMHW], union_2)
+    arcpy.SelectLayerByLocation_management(split_lyrname, "INTERSECT", ShorelinePts, '#', "NEW_SELECTION")
+    arcpy.SelectLayerByLocation_management(split_lyrname, "#", ShorelinePts, '#', "SWITCH_SELECTION")
+    # arcpy.FeatureClassToFeatureClass_conversion(split_lyrname, arcpy.env.scratchGDB, 'mtlkeep')
+    arcpy.Union_analysis([split_lyrname, bndMHW], union_2)
     arcpy.Dissolve_management(union_2, bndpoly, multi_part='SINGLE_PART') # Dissolve all features in union_2 to single part polygons
-
-    print('Select extra features for deletion\nRecommended technique: select the polygon/s to keep and then Switch Selection\n')
+    print('''\nUser input required! Select extra features in {} for deletion.\n
+        Recommended technique: select the polygon/s to keep and then Switch Selection.\n'''.format(bndpoly))
     return bndpoly
 
-
-def CombineShorelinePolygons_old(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly):
-    # Use MTL and MHW contour polygons to create full barrier island shoreline polygon; Shoreline at MHW on oceanside and MTL on bayside
-    # Inlet lines must intersect the MHW polygon
-    union = 'union_temp'
-    split_temp = 'split_temp'
-    union_2 = os.path.join(arcpy.env.scratchGDB, 'union_2_temp')
-
-    arcpy.Union_analysis([bndMTL, bndMHW], os.path.join(arcpy.env.scratchGDB, union))
-
-    # Create layer (split_temp) of land between MTL and MHW, split at inlets
-    query = 'FID_{}>0 AND FID_{}<0'.format(bndMTL, bndMHW)
-    arcpy.SelectLayerByAttribute_management(union, 'NEW_SELECTION', query) # Select only MTL features
-    arcpy.FeatureToPolygon_management([union, inletLines], os.path.join(arcpy.env.scratchGDB, split_temp)) # Split MTL features at inlets
-    arcpy.SelectLayerByAttribute_management(union, 'CLEAR_SELECTION') # Clear the selection
-
-    arcpy.SelectLayerByLocation_management(split_temp, "INTERSECT", ShorelinePts, '#', "NEW_SELECTION") # Select MHW-MLW area on oceanside, based on intersection with shoreline points
-    #Why Erase instead of union between bndMHW and split_temp? or Erase from bndMTL?
-    # Union didn't work when I tried it manually. Append worked, after copying bndMHW to bndpoly
-    arcpy.Erase_analysis(union, split_temp, union_2) # Erase from union layer the selected shoreline area in split
-    arcpy.Dissolve_management(union_2, bndpoly, multi_part='SINGLE_PART') # Dissolve all features in union_2 to single part polygons
-    print('Select extra features for deletion\nRecommended technique: select the polygon/s to keep and then Switch Selection\n')
-    return bndpoly
-
-def DEMtoFullShorelinePoly(elevGrid, prefix, MTL, MHW, inletLines, ShorelinePts):
-    bndMTL = '{}_bndpoly_mtl'.format(prefix)
-    bndMHW = '{}_bndpoly_mhw'.format(prefix)
-    bndpoly = '{}_bndpoly'.format(prefix)
-
+def DEMtoFullShorelinePoly(elevGrid, MTL, MHW, inletLines, ShorelinePts):
+    bndMTL = 'bndpoly_mtl'
+    bndMHW = 'bndpoly_mhw'
+    bndpoly = 'bndpoly'
+    print("Creating the MTL contour polgon from the DEM...")
     RasterToLandPerimeter(elevGrid, bndMTL, MTL)  # Polygon of MTL contour
+    print("Creating the MHW contour polgon from the DEM...")
     RasterToLandPerimeter(elevGrid, bndMHW, MHW)  # Polygon of MHW contour
-    CombineShorelinePolygons(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly)
-
+    print("Combining the two polygons...")
+    bndpoly = CombineShorelinePolygons(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly)
+    # print("User input required! Open the files in ArcGIS, select the polygons that should not be included in the final shoreline polygon, and then delete them. ")
     #DeleteTempFiles()
-    return bndpoly
+    return(bndpoly)
 
 def NewBNDpoly(old_boundary, modifying_feature, new_bndpoly='boundary_poly', vertexdist='25 METERS', snapdist='25 METERS'):
     # boundary = input line or polygon of boundary to be modified by newline

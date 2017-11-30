@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+
+import os
+import arcpy
+
 siteyear = {
     'Cedar2010':{'region': 'Delmarva', 'site': 'Cedar',
                     'year': '2010', 'code': 'cei10',
@@ -35,7 +39,10 @@ siteyear = {
                     'MHW':0.43, 'MLW':-0.61, 'MTL':None},
     'FireIsland2014':{'region': 'NewYork', 'site': 'FireIsland',
                     'year': '2014', 'code': 'fi14',
-                    'MHW':0.46, 'MLW':-1.01, 'MTL':None}
+                    'MHW':0.46, 'MLW':-1.01, 'MTL':None},
+    'Fisherman2014':{'region': 'Delmarva', 'site': 'Fisherman',
+                    'year': '2014', 'code': 'fish14',
+                    'MHW':0.34, 'MLW':-0.52, 'MTL':None}
     }
 
 ########### Default Values ##########################
