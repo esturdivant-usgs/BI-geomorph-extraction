@@ -358,8 +358,50 @@ def SpatialSort(in_fc, out_fc, sort_corner='LL', reverse_order=False, startcount
                 cursor.updateRow([row[0],startcount+row[0]])
     return out_fc, rowcount
 
+def SortTransectsFromSortLines(in_trans, out_trans, sort_lines=[], tID_fld='sort_ID', sort_corner='LL', verbose=True):
+    # Add the transect ID field to the transects if it doesn't already exist.
+    try:
+        arcpy.AddField_management(in_trans, tID_fld, 'SHORT')
+    except:
+        pass
+    # If sort_lines is blank ([]), go ahead and sort the transects based on sort_corner argument.
+    if not len(sort_lines):
+        out_trans = arcpy.Sort_management(in_trans, out_trans, [['Shape', 'ASCENDING']], sort_corner) # Sort from lower lef
+    else:
+        if verbose:
+            print("Creating new feature class {} to hold sorted transects...".format(out_trans))
+        arcpy.CreateFeatureclass_management(arcpy.env.workspace, os.path.basename(out_trans), "POLYLINE", in_trans, spatial_reference=in_trans)
+        dsc = arcpy.Describe(in_trans)
+        fieldnames = [field.name for field in dsc.fields if not field.name == dsc.OIDFieldName] + ['SHAPE@']
+        # Sort the sort_lines by field 'sort'
+        # Loop through ordered sort_lines
+        # Make a new FC with only the transects that intersect the given sort line.
+        # Sort the subsetted transects and append each one to out_trans
+        if verbose:
+            print("Sorting sort lines by field sort...")
+        sort_lines2 = arcpy.Sort_management(sort_lines, sort_lines+'2', [['sort', 'ASCENDING']])
+        if verbose:
+            print("For each line, creating subset of transects and adding them in order to the new FC...")
+        for sline, scorner in arcpy.da.SearchCursor(sort_lines2, ['SHAPE@', 'sort_corn']):
+            temp1 = arcpy.FeatureClassToFeatureClass_conversion(in_trans, arcpy.env.scratchGDB, 'trans_subset')
+            with arcpy.da.UpdateCursor(temp1, ['SHAPE@']) as cursor:
+                for trow in cursor:
+                    tran = trow[0]
+                    if tran.disjoint(sline):
+                        cursor.deleteRow()
+            temp2 = arcpy.Sort_management(temp1, 'trans_sub_sort{}'.format(scorner), [['Shape', 'ASCENDING']], scorner)
+            with arcpy.da.InsertCursor(out_trans, fieldnames) as icur:
+                for row in arcpy.da.SearchCursor(temp2, fieldnames):
+                    icur.insertRow(row)
+    if verbose:
+        print("Copying the generated OID values to the transect ID field ({})...".format(tID_fld))
+    # Copy the OID values, which should be correctly sorted, to the tID_fld
+    with arcpy.da.UpdateCursor(out_trans, ['OID@', tID_fld]) as cursor:
+        for row in cursor:
+            cursor.updateRow([row[0], row[0]])
+    return(out_trans)
 
-def SortTransectsFromSortLines(in_fc, out_fc, sort_lines=[], sortfield='sort_ID', sort_corner='LL'):
+def SortTransectsFromSortLines_old(in_fc, out_fc, sort_lines=[], sortfield='sort_ID', sort_corner='LL'):
     # Alternative to SpatialSort() when sorting must be done in spatial groups
     try:
         # add the transect ID field to the transects if it doesn't already exist.
@@ -370,11 +412,14 @@ def SortTransectsFromSortLines(in_fc, out_fc, sort_lines=[], sortfield='sort_ID'
         # If sort_lines is blank ([]),
         base_fc, ct = SortTransectsByFeature(in_fc, 0, sort_lines, [1, sort_corner], sortfield)
     else:
-        #
-        sort_lines_arr = arcpy.da.FeatureClassToNumPyArray(sort_lines, ['sort', 'sort_corn'])
-        base_fc, ct = SortTransectsByFeature(in_fc, 0, sort_lines, sort_lines_arr[0])
+        # Sort the sort lines by the desginated field.
+        sort_lines2 = sort_lines+'_sorted'
+        arcpy.Sort_management(sort_lines, sort_lines2, [['sort', 'ASCENDING']])
+        # Convert the file to a numpy array to access the values.
+        sort_lines_arr = arcpy.da.FeatureClassToNumPyArray(sort_lines2, ['sort', 'sort_corn'])
+        base_fc, ct = SortTransectsByFeature(in_fc, 0, sort_lines2, sort_lines_arr[0])
         for row in sort_lines_arr[1:]:
-            next_fc, ct = SortTransectsByFeature(in_fc, ct, sort_lines, row)
+            next_fc, ct = SortTransectsByFeature(in_fc, ct, sort_lines2, row)
             arcpy.Append_management(next_fc, base_fc) # Append each new FC to the base.
     # arcpy.FeatureClassToFeatureClass_conversion(base_fc, arcpy.env.workspace, out_fc)
     SetStartValue(base_fc, out_fc, sortfield, start=1)

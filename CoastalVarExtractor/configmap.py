@@ -79,11 +79,3 @@ extra_fields = ["StartX", "StartY", "ORIG_FID", "Autogen", "ProcTime",
                 "SHAPE_Leng", "OBJECTID_1", "Shape_Length", "EndX", "EndY",
                 "BaselineID", "OBJECTID", "ORIG_OID", "TRANSORDER_1"]
 extra_fields += [x.upper() for x in extra_fields]
-
-########### Temp file names ##########################
-trans_presort = os.path.join(arcpy.env.scratchGDB, 'trans_presort_temp')
-trans_extended = os.path.join(arcpy.env.scratchGDB, 'trans_ext_temp')
-trans_sort_1 = os.path.join(arcpy.env.scratchGDB, 'trans_sort_temp')
-trans_x = os.path.join(arcpy.env.scratchGDB, 'overlap_points_temp')
-overlapTrans_lines = os.path.join(arcpy.env.scratchGDB, 'overlapTrans_lines_temp')
-sort_lines =  os.path.join(arcpy.env.scratchGDB, 'sort_lines')

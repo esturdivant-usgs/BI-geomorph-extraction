@@ -90,8 +90,8 @@ oMLW = MHW-MLW                      # MLW offset from MHW # Beach height adjustm
 SiteYear_strings['MTL'] = MTL = (MHW+MLW)/2
 
 ############## Outputs ###############################
-inletLines = '{site}{year}_inletLines'.format(**SiteYear_strings)         # delineated inlets
-armorLines = '{site}{year}_armor'.format(**SiteYear_strings)              # delineated shorefront armoring to suplement dlows
+inletLines = 'inletLines'.format(**SiteYear_strings)         # delineated inlets
+armorLines = 'armor'.format(**SiteYear_strings)              # delineated shorefront armoring to suplement dlows
 # bndMTL = '{site}{year}_bndpoly_mtl'.format(**SiteYear_strings)            # polygon at MTL contour line; intermediate product
 # bndMHW = '{site}{year}_bndpoly_mhw'.format(**SiteYear_strings)            # polygon at MHW contour line; intermediate product
 # bndpoly = '{site}{year}_bndpoly'.format(**SiteYear_strings)               # polygon combined MTL and MHW contour line; before snapped to SLpts
@@ -105,9 +105,9 @@ elevGrid_5m = elevGrid+'_5m'                                              # Elev
 slopeGrid = '{site}{year}_slope_5m'.format(**SiteYear_strings)            # Slope in 5 m grids
 
 # Transects
-extendedTrans = "{site}{year}_extTrans".format(**SiteYear_strings) # Created MANUALLY: see TransExtv4Notes.txt
-extendedTransects = '{site}{year}_extTrans_working'.format(**SiteYear_strings)
-extTrans_tidy = "{site}_tidyTrans".format(**SiteYear_strings)
+extendedTrans = "extTrans".format(**SiteYear_strings) # Created MANUALLY: see TransExtv4Notes.txt
+extendedTransects = 'extTrans_working'.format(**SiteYear_strings)
+extTrans_tidy = "tidyTrans".format(**SiteYear_strings)
 tidy_clipped = "{site}{year}_tidyTrans_clipped".format(**SiteYear_strings)
 extTrans_fill = '{site}{year}_extTrans_fill'.format(**SiteYear_strings)
 extTrans_null = '{site}{year}_extTrans_null'.format(**SiteYear_strings)
@@ -128,6 +128,14 @@ rst_transPopulated = "{site}{year}_rstTrans_populated".format(**SiteYear_strings
 rst_transgrid_path = os.path.join(scratch_dir, "{code}_trans".format(**SiteYear_strings))
 rst_bwgrid_path = os.path.join(home, "{code}".format(**SiteYear_strings))
 bw_rst="{code}_ubw".format(**SiteYear_strings)
+
+########### Temp file names ##########################
+trans_presort = os.path.join(arcpy.env.scratchGDB, 'trans_presort_temp')
+trans_extended = os.path.join(arcpy.env.scratchGDB, 'trans_ext_temp')
+trans_sort_1 = os.path.join(arcpy.env.scratchGDB, 'trans_sort_temp')
+trans_x = os.path.join(arcpy.env.scratchGDB, 'overlap_points_temp')
+overlapTrans_lines = os.path.join(arcpy.env.scratchGDB, 'overlapTrans_lines_temp')
+sort_lines =  os.path.join(arcpy.env.scratchGDB, 'sort_lines')
 
 if not __name__ == '__main__':
     print("setvars.py initialized variables.")
