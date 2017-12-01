@@ -40,7 +40,7 @@ siteyear = {
     'FireIsland2014':{'region': 'NewYork', 'site': 'FireIsland',
                     'year': '2014', 'code': 'fi14',
                     'MHW':0.46, 'MLW':-1.01, 'MTL':None},
-    'Fisherman2014':{'region': 'Delmarva', 'site': 'Fisherman',
+    'Fisherman2014':{'region': 'Delmarva', 'site': 'Fisherman', # transects extended manually
                     'year': '2014', 'code': 'fish14',
                     'MHW':0.34, 'MLW':-0.52, 'MTL':None}
     }

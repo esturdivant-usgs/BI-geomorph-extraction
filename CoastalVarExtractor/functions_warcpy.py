@@ -285,6 +285,17 @@ def ProcessDEM(elevGrid, elevGrid_5m, utmSR):
     outAggreg.save(elevGrid_5m)
     return(elevGrid_5m)
 
+def RemoveTransectsOutsideBounds(trans, barrierBoundary, distance=200):
+    # Delete transects not within 200 m of the study area.
+    for row in arcpy.da.SearchCursor(barrierBoundary, ['SHAPE@']):
+        geom = row[0]
+        with arcpy.da.UpdateCursor(trans, ['SHAPE@']) as cursor:
+            for trow in cursor:
+                tran = trow[0]
+                if tran.disjoint(geom.buffer(distance)):
+                    cursor.deleteRow()
+    return(trans)
+
 def ExtendLine(fc, new_fc, distance, proj_code=26918):
     # From GIS stack exchange http://gis.stackexchange.com/questions/71645/a-tool-or-way-to-extend-line-by-specified-distance
     # layer must have map projection
@@ -298,13 +309,15 @@ def ExtendLine(fc, new_fc, distance, proj_code=26918):
             total = add(total, element)
             yield total
     # Project transects to UTM
+    if len(os.path.split(new_fc)) > 1:
+        fcpath, fcbase = os.path.split(new_fc)
     if not arcpy.Describe(fc).spatialReference.factoryCode == proj_code:
         print('Projecting {} to UTM'.format(fc))
         arcpy.Project_management(fc, fc+'utm_temp', arcpy.SpatialReference(proj_code))  # project to PCS
-        arcpy.FeatureClassToFeatureClass_conversion(fc+'utm_temp', arcpy.env.workspace, new_fc)
+        arcpy.FeatureClassToFeatureClass_conversion(fc+'utm_temp', fcpath, fcbase)
     else:
         print('{} is already projected in UTM.'.format(fc))
-        arcpy.FeatureClassToFeatureClass_conversion(fc, arcpy.env.workspace, new_fc)
+        arcpy.FeatureClassToFeatureClass_conversion(fc, fcpath, fcbase)
     #OID is needed to determine how to break up flat list of data by feature.
     coordinates = [[row[0], row[1]] for row in
                    arcpy.da.SearchCursor(fc, ["OID@", "SHAPE@XY"],
@@ -325,9 +338,27 @@ def ExtendLine(fc, new_fc, distance, proj_code=26918):
                 row[0] = newvert[j]
                 j+=1
                 cursor.updateRow(row) #FIXME: If the FC was projected as part of the function, returns RuntimeError: "The spatial index grid size is invalid."
-    return new_fc
+    if verbose:
+        print("Transects extended.")
+    return(new_fc)
 
-def PrepTransects_part2(trans_presort, LTextended, barrierBoundary=''):
+def RemoveDuplicates(trans_presort, orig_xtnd, verbose=True):
+    # 2. Remove orig transects from manually created transects
+    # If any of the original extended transects (with null values) are still present in trans_presort, delete them.
+    for row in arcpy.da.SearchCursor(orig_xtnd, ['SHAPE@']):
+        oldline = row[0]
+        with arcpy.da.UpdateCursor(trans_presort, ['SHAPE@']) as cursor:
+            for trow in cursor:
+                tran = trow[0]
+                if tran.equals(oldline):
+                    cursor.deleteRow()
+    # 3. Append original extended transects (with values) to the new transects
+    arcpy.Append_management(orig_xtnd, trans_presort)
+    if verbose:
+        print("{} ready for sorting.".format(trans_presort))
+    return(trans_presort)
+
+def PrepTransects_part2_old(trans_presort, LTextended, barrierBoundary=''):
     # 2. Remove orig transects from manually created transects
     # If any of the original extended transects (with null values) are still present in trans_presort, delete them.
     arcpy.SelectLayerByLocation_management(trans_presort, "ARE_IDENTICAL_TO", LTextended)
@@ -357,6 +388,20 @@ def SpatialSort(in_fc, out_fc, sort_corner='LL', reverse_order=False, startcount
             for row in cursor:
                 cursor.updateRow([row[0],startcount+row[0]])
     return out_fc, rowcount
+
+def SortTransectPrep(spatialref, newfields = ['sort', 'sort_corn']):
+    multi_sort = input("Do we need to sort the transects in batches to preserve the order? (y/n) ")
+    sort_lines = 'sort_lines'
+    if multi_sort == 'y':
+        sort_lines = arcpy.CreateFeatureclass_management(arcpy.env.scratchGDB, sort_lines, "POLYLINE", spatial_reference=spatialref)
+        arcpy.AddField_management(sort_lines, newfields[0], 'SHORT', field_precision=2)
+        arcpy.AddField_management(sort_lines, newfields[1], 'TEXT', field_length=2)
+        print("MANUALLY: Add features to sort_lines. Indicate the order of use in 'sort' and the sort corner in 'sort_corn'.")
+    else:
+        sort_lines = []
+        # Corner from which to start sorting, LL = lower left, etc.
+        sort_corner = input("Sort corner (LL, LR, UL, UR): ")
+    return(sort_lines)
 
 def SortTransectsFromSortLines(in_trans, out_trans, sort_lines=[], tID_fld='sort_ID', sort_corner='LL', verbose=True):
     # Add the transect ID field to the transects if it doesn't already exist.
@@ -455,18 +500,6 @@ def SetStartValue(trans_sort_1, extendedTrans, tID_fld, start=1):
     else:
         print("First value was already {}.".format(start))
     return
-
-def PreprocessTransects(site,old_transects=False,sort_corner='LL',sortfield='sort_ID',distance=3000):
-    # In copy of transects feature class, create and populate sort field (sort_ID), and extend transects
-    if not old_transects:
-        old_transects = '{}_LTtransects'.format(site)
-    new_transects = '{}_LTtrans_sort'.format(site)
-    extTransects = '{}_extTrans'.format(site)
-    # Create field trans_order and sort by that
-    SpatialSort(old_transects,new_transects,sort_corner,sortfield=sortfield)
-    # extend lines
-    ExtendLine(new_transects,extTransects,distance)
-    return extTransects
 
 def CreateShoreBetweenInlets(shore_delineator, inletLines, out_line, ShorelinePts, proj_code=26918, verbose=True):
     # initialize temp layer names
