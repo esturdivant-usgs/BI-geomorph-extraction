@@ -6,7 +6,6 @@
 
 # v1.0 – removed many unused functions. They are still in the former repo (plover_transect_extraction.TransectExtractoin.TE_functions_arcpy)
 
-import arcpy
 import time
 import os
 import collections
@@ -27,7 +26,7 @@ def SetInputFCname(inFCname, varname='', system_ext=True):
     if arcpy.Exists(inFCname):
         inFCname = inFCname
     else:
-        FCname = input("{} file (e.g. {} or '0' for none): ".format(varname, inFCname))
+        FCname = input("{} file with path (e.g. {} or '0' for none): ".format(varname, inFCname))
         if FCname == '0':
             FCname = False
         elif not arcpy.Exists(FCname):
@@ -41,7 +40,7 @@ def SetInputFCname(inFCname, varname='', system_ext=True):
             inFCname = False
             if system_ext:
                 raise SystemExit
-    return inFCname
+    return(inFCname)
 
 def unique_values(table, field):
     # return sorted unique values in field
@@ -638,7 +637,7 @@ def DEMtoFullShorelinePoly(elevGrid, MTL, MHW, inletLines, ShorelinePts):
     #DeleteTempFiles()
     return(bndpoly)
 
-def NewBNDpoly(old_boundary, modifying_feature, new_bndpoly='boundary_poly', vertexdist='25 METERS', snapdist='25 METERS'):
+def NewBNDpoly(old_boundary, modifying_feature, new_bndpoly='boundary_poly', vertexdist='25 METERS', snapdist='25 METERS', verbose=True):
     # boundary = input line or polygon of boundary to be modified by newline
     typeFC = arcpy.Describe(old_boundary).shapeType
     if typeFC == "Line" or typeFC =='Polyline':
@@ -655,6 +654,8 @@ def NewBNDpoly(old_boundary, modifying_feature, new_bndpoly='boundary_poly', ver
     arcpy.Densify_edit(new_bndpoly, 'DISTANCE', vertexdist)
     #arcpy.Densify_edit(modifying_feature,'DISTANCE',vertexdist)
     arcpy.Snap_edit(new_bndpoly,[[modifying_feature, 'VERTEX',snapdist]]) # Takes a while
+    if verbose:
+        print("Created: {}".format(new_bndpoly))
     return new_bndpoly # string name of new polygon
 
 def JoinFields(targetfc, sourcefile, dest2src_fields, joinfields=['sort_ID']):
@@ -762,7 +763,7 @@ def ArmorLineToTrans_PD(in_trans, armorLines, sl2trans_df, tID_fld, proj_code, e
     arm2trans = os.path.join(arcpy.env.scratchGDB, "arm2trans")
     flds = ['Arm_x', 'Arm_y', 'Arm_z']
     if not arcpy.Exists(armorLines) or not int(arcpy.GetCount_management(armorLines).getOutput(0)):
-        print('Armoring file either missing or empty so we will proceed without armoring data. If shorefront tampering is present at this site, cancel the operations to digitize.')
+        print('\nArmoring file either missing or empty so we will proceed without armoring data. If shorefront tampering is present at this site, cancel the operations to digitize.')
         df = pd.DataFrame(columns=flds)
     else:
         # Create armor points with XY fields
@@ -788,7 +789,7 @@ def add_shorelinePts2Trans(in_trans, in_pts, shoreline, tID_fld='sort_ID', proxi
     #FIXME: save previous cursor (or this one) to dict to reduce iterations https://gis.stackexchange.com/a/30235
     start = time.clock()
     if verbose:
-        print("\nJoining shoreline points to transects:")
+        print("\nJoining shoreline points to transects...")
     # Find fieldname of slope field
     fmapdict = find_similar_fields('sl', in_pts, ['slope'])
     slp_fld = fmapdict['slope']['src']
@@ -804,7 +805,7 @@ def add_shorelinePts2Trans(in_trans, in_pts, shoreline, tID_fld='sort_ID', proxi
         df.loc[tID, ['SL_x', 'SL_y', 'Bslope']] = newrow
         if verbose:
             if tID % 100 < 1:
-                print('Duration at transect {}: {}'.format(tID, fun.print_duration(start, True)))
+                print('...duration at transect {}: {}'.format(tID, fun.print_duration(start, True)))
     fun.print_duration(start)
     return(df)
 
@@ -982,7 +983,7 @@ def calc_IslandWidths(in_trans, barrierBoundary, out_clipped='clip2island', tID_
     home = arcpy.env.workspace
     out_clipped = os.path.join(arcpy.env.scratchGDB, out_clipped)
     if not arcpy.Exists(out_clipped):
-        print('Clipping the transect to the barrier island boundaries...')
+        print('Clipping the transects to the barrier island boundaries...')
         arcpy.Clip_analysis(os.path.join(home, in_trans), os.path.join(home, barrierBoundary), out_clipped) # ~30 seconds
     # WidthPart - spot-checking verifies the results, but it should additionally include a check to ensure that the first transect part encountered intersects the shoreline
     print('Getting the width along each transect of the oceanside land (WidthPart)...')
@@ -995,6 +996,7 @@ def calc_IslandWidths(in_trans, barrierBoundary, out_clipped='clip2island', tID_
     # WidthFull
     print('Getting the width along each transect of the entire barrier (WidthFull)...')
     verts = FCtoDF(out_clipped, id_fld=tID_fld, explode_to_points=True)
+    verts.drop(tID_fld, axis=1, inplace=True)
     d = verts.groupby(tID_fld)['SHAPE@X', 'SHAPE@Y'].agg(lambda x: x.max() - x.min())
     widthfull = np.hypot(d['SHAPE@X'], d['SHAPE@Y'])
     widthfull.name = 'WidthFull'
@@ -1040,6 +1042,8 @@ def FCtoDF(fc, xy=False, dffields=[], fill=-99999, id_fld=False, extra_fields=[]
     # 1. Convert FC to Numpy array
     if explode_to_points:
         message = 'Converting feature class vertices to array with X and Y...'
+        if not id_fld:
+            print('Error: if explode_to_points is set to True, id_fld must be specified.')
         fcfields = [id_fld, 'SHAPE@X', 'SHAPE@Y', 'OID@']
     else:
         fcfields = [f.name for f in arcpy.ListFields(fc)]
@@ -1150,6 +1154,19 @@ def DFtoFC_large(pts_df, out_fc, spatial_ref, df_id='SplitSort', xy=["seg_x", "s
         print("OUTPUT: {}".format(out_fc))
     fun.print_duration(start)
     return(out_fc)
+
+def DFtoTable(df, tbl, fill=-99999):
+    # Convert data frame to Arc Table by converting to np.array with fill values and then to Table
+    try:
+        arr = df.select_dtypes(exclude=['object']).fillna(fill).to_records()
+    except ValueError:
+        df.index.name = 'index'
+        arr = df.select_dtypes(exclude=['object']).fillna(fill).to_records()
+    if not os.path.split(tbl)[0]: # if no path is provided, default to scratch gdb
+        tbl = os.path.join(arcpy.env.scratchGDB, tbl)
+    arcpy.Delete_management(tbl)
+    arcpy.da.NumPyArrayToTable(arr, tbl)
+    return(tbl)
 
 def JoinDFtoRaster(df, rst_ID, out_rst='', fill=-99999, id_fld='sort_ID', val_fld=''):
     # Join fields from df to rst_ID to create new out_rst

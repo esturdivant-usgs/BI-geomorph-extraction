@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-
-import os
-import arcpy
-
+"""
+Standard values for CoastalVarExtractor.
+They should not need to be changed except to include more site value mappings.
+They do not require any input values. 
+"""
 siteyear = {
     'Cedar2010':{'region': 'Delmarva', 'site': 'Cedar',
                     'year': '2010', 'code': 'cei10',
