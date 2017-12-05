@@ -886,20 +886,26 @@ def find_ClosestPt2Trans_snap(in_trans, in_pts, trans_df, prefix, tID_fld='sort_
 Dist2Inlet
 """
 def measure_Dist2Inlet(shoreline, in_trans, inletLines, tID_fld='sort_ID'):
+    # measure distance along oceanside shore from transect to inlet.
+    # Uses three SearchCursors (arcpy's data access module).
+    # Stores values in new data frame.
+    # Initialize
     start = time.clock()
     utmSR = arcpy.Describe(in_trans).spatialReference
     df = pd.DataFrame(columns=[tID_fld, 'Dist2Inlet']) # initialize dataframe
-    inlets = [row[0] for row in arcpy.da.SearchCursor(inletLines, ("SHAPE@"))] # get inlet features as geometry objects; faster than cursor in depths of loop
+    # Get inlets geometry objects
+    inlets = [row[0] for row in arcpy.da.SearchCursor(inletLines, ("SHAPE@"))]
     for row in arcpy.da.SearchCursor(shoreline, ("SHAPE@")): # highest level loop through lines is faster than through transects
         line = row[0]
         for [transect, tID] in arcpy.da.SearchCursor(in_trans, ("SHAPE@",  tID_fld)):
-            # [transect, tID] = trow
-            if not line.disjoint(transect): #line and transect overlap
-                # cut shoreline with transect
+            if not line.disjoint(transect): # If line and transect overlap...
+                # 1. cut shoreline at the transect
                 [rseg, lseg] = line.cut(transect)
-                # get length for only segs that touch inlets # use only first part in case of multipart feature
+                # 2. if the shoreline segment touches any inlet, get the segment length.
+                # in case of multipart features, use only the first part
                 lenR = arcpy.Polyline(rseg.getPart(0), utmSR).length if not all(rseg.disjoint(i) for i in inlets) else np.nan
                 lenL = arcpy.Polyline(lseg.getPart(0), utmSR).length if not all(lseg.disjoint(i) for i in inlets) else np.nan
+                # 3. Return the length of the shorter segment and save it in the DF
                 mindist = np.nanmin([lenR, lenL])
                 df = df.append({tID_fld:tID, 'Dist2Inlet':mindist}, ignore_index=True)
     df.index = df[tID_fld]
