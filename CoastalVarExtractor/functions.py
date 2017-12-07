@@ -204,7 +204,7 @@ def plot_beach_profile(ax, pts_set, MHW, MTL):
         btop = 4
 
     # Plot line
-    ax.plot(pts_set['Dist_Seg'], pts_set['ptZmhw']+MHW, color='gray', linestyle='-', linewidth = 1)
+    ax.plot(pts_set['Dist_Seg'], pts_set['ptZmhw']+MHW, color='gray', linestyle='-', linewidth = 1, marker='.')
     plt.annotate('Elevation', xy=(bend, btop), xytext=(bend+bend*0.025, btop), color='gray')
 
     # Beach points
@@ -220,7 +220,11 @@ def plot_beach_profile(ax, pts_set, MHW, MTL):
 
     # Upper beach width and height
     plt.plot([MHW, tran.uBW],[MHW, MHW], color='orange', linestyle='-', linewidth = 1.5)
+    plt.annotate('uBW: {:.1f}'.format(tran.uBW), xy=(5, MHW+0.06),
+                 xytext=(tran.uBW*0.83, MHW+0.05), color='orange')
     plt.plot([tran.uBW, tran.uBW],[MHW, MHW + tran.uBH], color='orange', linestyle='-', linewidth = 1.5, marker='|')
+    plt.annotate('uBH: {:.1f}'.format(tran.uBH), xy=(tran.uBW, (MHW + tran.uBH)),
+                 xytext=(tran.uBW+bend*0.03, MHW + tran.uBH*0.5), color='orange')
 
     # ax.axis('scaled')
     ax.set_xlim([-5, bend+bend*0.11])
@@ -264,6 +268,7 @@ def plot_island_profile(ax, pts_set, MHW, MTL):
     # #Upper beach width and height
     plt.plot([MHW, tran.uBW],[MHW, MHW], color='orange', linestyle='-', linewidth = 1.5)
     plt.plot([tran.uBW, tran.uBW],[MHW, MHW + tran.uBH], color='orange', linestyle='-', linewidth = 1.5, marker='|')
+
 
     # #ax.axis('scaled')
     ax.set_xlim([-tran.WidthFull*0.038, tran.WidthFull + tran.WidthFull*0.038])

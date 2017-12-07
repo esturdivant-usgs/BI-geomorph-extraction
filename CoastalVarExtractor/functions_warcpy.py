@@ -404,6 +404,7 @@ def SortTransectPrep(spatialref, newfields = ['sort', 'sort_corn']):
 
 def SortTransectsFromSortLines(in_trans, out_trans, sort_lines=[], tID_fld='sort_ID', sort_corner='LL', verbose=True):
     # Add the transect ID field to the transects if it doesn't already exist.
+    temppath = os.path.join(arcpy.env.scratchGDB, 'trans_')
     try:
         arcpy.AddField_management(in_trans, tID_fld, 'SHORT')
     except:
@@ -414,7 +415,7 @@ def SortTransectsFromSortLines(in_trans, out_trans, sort_lines=[], tID_fld='sort
     else:
         if verbose:
             print("Creating new feature class {} to hold sorted transects...".format(out_trans))
-        arcpy.CreateFeatureclass_management(arcpy.env.workspace, os.path.basename(out_trans), "POLYLINE", in_trans, spatial_reference=in_trans)
+        out_trans = arcpy.CreateFeatureclass_management(arcpy.env.workspace, os.path.basename(out_trans), "POLYLINE", in_trans, spatial_reference=in_trans)
         dsc = arcpy.Describe(in_trans)
         fieldnames = [field.name for field in dsc.fields if not field.name == dsc.OIDFieldName] + ['SHAPE@']
         # Sort the sort_lines by field 'sort'
@@ -426,14 +427,25 @@ def SortTransectsFromSortLines(in_trans, out_trans, sort_lines=[], tID_fld='sort
         sort_lines2 = arcpy.Sort_management(sort_lines, sort_lines+'2', [['sort', 'ASCENDING']])
         if verbose:
             print("For each line, creating subset of transects and adding them in order to the new FC...")
-        for sline, scorner in arcpy.da.SearchCursor(sort_lines2, ['SHAPE@', 'sort_corn']):
+        for sline, scorner, reverse_order in arcpy.da.SearchCursor(sort_lines2, ['SHAPE@', 'sort_corn', 'reverse']):
+            # Get transects that intersect sort line: copy transects, then delete all rows that don't intersect.
             temp1 = arcpy.FeatureClassToFeatureClass_conversion(in_trans, arcpy.env.scratchGDB, 'trans_subset')
             with arcpy.da.UpdateCursor(temp1, ['SHAPE@']) as cursor:
                 for trow in cursor:
                     tran = trow[0]
                     if tran.disjoint(sline):
                         cursor.deleteRow()
-            temp2 = arcpy.Sort_management(temp1, 'trans_sub_sort{}'.format(scorner), [['Shape', 'ASCENDING']], scorner)
+            # Sort the remaining transects.
+            temp2 = arcpy.Sort_management(temp1, temppath+'sub_sort{}'.format(scorner), [['Shape', 'ASCENDING']], scorner)
+            # Reverse the order if specified.
+            if reverse_order == 'T':
+                # Reverse the sort order, i.e. reverse the OID values
+                # Copy OID values to tID_fld then sort in descending order, which will reverse the OID values
+                with arcpy.da.UpdateCursor(temp2, ['OID@', tID_fld]) as cursor:
+                    for row in cursor:
+                        cursor.updateRow([row[0], row[0]])
+                temp2 = arcpy.Sort_management(temp2, temppath+'subrev_sort{}'.format(scorner), [[tID_fld, 'DESCENDING']])
+            # Append the new section of sorted transects to those already completed.
             with arcpy.da.InsertCursor(out_trans, fieldnames) as icur:
                 for row in arcpy.da.SearchCursor(temp2, fieldnames):
                     icur.insertRow(row)
@@ -898,11 +910,12 @@ def measure_Dist2Inlet(shoreline, in_trans, inletLines, tID_fld='sort_ID'):
     for row in arcpy.da.SearchCursor(shoreline, ("SHAPE@")): # highest level loop through lines is faster than through transects
         line = row[0]
         for [transect, tID] in arcpy.da.SearchCursor(in_trans, ("SHAPE@",  tID_fld)):
-            if not line.disjoint(transect): # If line and transect overlap...
+            if not line.disjoint(transect): # If shoreline and transect overlap...
                 # 1. cut shoreline at the transect
                 [rseg, lseg] = line.cut(transect)
                 # 2. if the shoreline segment touches any inlet, get the segment length.
                 # in case of multipart features, use only the first part
+                # What happens when the shoreline and transect intersect in multiple places?
                 lenR = arcpy.Polyline(rseg.getPart(0), utmSR).length if not all(rseg.disjoint(i) for i in inlets) else np.nan
                 lenL = arcpy.Polyline(lseg.getPart(0), utmSR).length if not all(lseg.disjoint(i) for i in inlets) else np.nan
                 # 3. Return the length of the shorter segment and save it in the DF

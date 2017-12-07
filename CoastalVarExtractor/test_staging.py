@@ -82,17 +82,80 @@ def SelectivelyDeleteFeatures(targetFC, selectionFC):
 
 
 
-def SortTransectPrep(newfields = ['sort', 'sort_corn'], spatialref=utmSR):
-    multi_sort = input("Do we need to sort the transects in batches to preserve the order? (y/n) ")
-    sort_lines = 'sort_lines'
-    if multi_sort == 'y':
-        if not arcpy.Exists(sort_lines):
-            sort_lines = arcpy.CreateFeatureclass_management(arcpy.env.scratchGDB, sort_lines, "POLYLINE", spatial_reference=utmSR)
-            arcpy.AddField_management(sort_lines, newfields[0], 'SHORT', field_precision=2)
-            arcpy.AddField_management(sort_lines, newfields[1], 'TEXT', field_length=2)
-            print("MANUALLY: Add features to sort_lines. Indicate the order of use in 'sort' and the sort corner in 'sort_corn'.")
+def SortTransectsFromSortLines(in_trans, out_trans, sort_lines=[], tID_fld='sort_ID', sort_corner='LL', verbose=True):
+    # Add the transect ID field to the transects if it doesn't already exist.
+    temppath = os.path.join(arcpy.env.scratchGDB, 'trans_')
+    try:
+        arcpy.AddField_management(in_trans, tID_fld, 'SHORT')
+    except:
+        pass
+    # If sort_lines is blank ([]), go ahead and sort the transects based on sort_corner argument.
+    if not len(sort_lines):
+        out_trans = arcpy.Sort_management(in_trans, out_trans, [['Shape', 'ASCENDING']], sort_corner) # Sort from lower lef
     else:
-        sort_lines = []
-        # Corner from which to start sorting, LL = lower left, etc.
-        sort_corner = input("Sort corner (LL, LR, UL, UR): ")
-    return(sort_lines)
+        if verbose:
+            print("Creating new feature class {} to hold sorted transects...".format(out_trans))
+        out_trans = arcpy.CreateFeatureclass_management(arcpy.env.workspace, os.path.basename(out_trans), "POLYLINE", in_trans, spatial_reference=in_trans)
+        dsc = arcpy.Describe(in_trans)
+        fieldnames = [field.name for field in dsc.fields if not field.name == dsc.OIDFieldName] + ['SHAPE@']
+        # Sort the sort_lines by field 'sort'
+        # Loop through ordered sort_lines
+        # Make a new FC with only the transects that intersect the given sort line.
+        # Sort the subsetted transects and append each one to out_trans
+        if verbose:
+            print("Sorting sort lines by field sort...")
+        sort_lines2 = arcpy.Sort_management(sort_lines, sort_lines+'2', [['sort', 'ASCENDING']])
+        if verbose:
+            print("For each line, creating subset of transects and adding them in order to the new FC...")
+        for sline, scorner, reverse_order in arcpy.da.SearchCursor(sort_lines2, ['SHAPE@', 'sort_corn', 'reverse']):
+            # Get transects that intersect sort line: copy transects, then delete all rows that don't intersect.
+            temp1 = arcpy.FeatureClassToFeatureClass_conversion(in_trans, arcpy.env.scratchGDB, 'trans_subset')
+            with arcpy.da.UpdateCursor(temp1, ['SHAPE@']) as cursor:
+                for trow in cursor:
+                    tran = trow[0]
+                    if tran.disjoint(sline):
+                        cursor.deleteRow()
+            # Sort the remaining transects.
+            temp2 = arcpy.Sort_management(temp1, temppath+'sub_sort{}'.format(scorner), [['Shape', 'ASCENDING']], scorner)
+            # Reverse the order if specified.
+            if reverse_order == 'T':
+                # temp2 = arcpy.Sort_management(temp2, 'trans_sub_sort{}rev'.format(scorner), [['OID', 'DESCENDING']])
+                rowcount = int(arcpy.GetCount_management(temp2)[0])
+                with arcpy.da.UpdateCursor(temp2, ['OID@']) as cursor:
+                    for row in cursor:
+                        cursor.updateRow([rowcount-row[0]+1])
+            # Append the new section of sorted transects to those already completed.
+            with arcpy.da.InsertCursor(out_trans, fieldnames) as icur:
+                for row in arcpy.da.SearchCursor(temp2, fieldnames):
+                    icur.insertRow(row)
+    if verbose:
+        print("Copying the generated OID values to the transect ID field ({})...".format(tID_fld))
+    # Copy the OID values, which should be correctly sorted, to the tID_fld
+    with arcpy.da.UpdateCursor(out_trans, ['OID@', tID_fld]) as cursor:
+        for row in cursor:
+            cursor.updateRow([row[0], row[0]])
+    return(out_trans)
+
+
+sort_lines2
+
+for sline, scorner in arcpy.da.SearchCursor(sort_lines2, ['SHAPE@', 'sort_corn']):
+
+temp1 = arcpy.FeatureClassToFeatureClass_conversion(in_trans, arcpy.env.scratchGDB, 'trans_subset')
+with arcpy.da.UpdateCursor(temp1, ['SHAPE@']) as cursor:
+    for trow in cursor:
+        tran = trow[0]
+        if tran.disjoint(sline):
+            cursor.deleteRow()
+temp2 = arcpy.Sort_management(temp1, temppath+'sub_sort{}'.format(scorner), [['Shape', 'ASCENDING']], scorner)
+if reverse_order == 'T':
+
+rowcount = int(arcpy.GetCount_management(temp2)[0])
+with arcpy.da.UpdateCursor(temp2, ['OID@', 'sort_ID']) as cursor:
+    for row in cursor:
+        cursor.updateRow([row[0], rowcount-row[0]+1])
+
+with arcpy.da.UpdateCursor(temp2, ['OID@', tID_fld]) as cursor:
+    for row in cursor:
+        cursor.updateRow([row[0], row[0]])
+temp2 = arcpy.Sort_management(temp2, temppath+'subrev_sort{}'.format(scorner), [[tID_fld, 'DESCENDING']])
