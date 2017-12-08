@@ -540,7 +540,7 @@ def CreateShoreBetweenInlets(shore_delineator, inletLines, out_line, ShorelinePt
     arcpy.SpatialJoin_analysis(split, ShorelinePts, split+'_join', "#","KEEP_COMMON", match_option="COMPLETELY_CONTAINS")
     if verbose:
         print("Dissolving the line to create {}...".format(out_line))
-    arcpy.Dissolve_management(split+'_join', out_line, [["FID_{}".format(shore_delineator)]])
+    arcpy.Dissolve_management(split+'_join', out_line, [["FID_{}".format(shore_delineator)]], multi_part="SINGLE_PART")
     return out_line
 
 def CreateShoreBetweenInlets_old(shore_delineator,inletLines, out_line, ShorelinePts, proj_code=26918):
