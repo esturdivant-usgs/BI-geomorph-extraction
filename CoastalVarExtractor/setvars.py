@@ -99,24 +99,24 @@ oMLW = MHW-MLW                      # MLW offset from MHW # Beach height adjustm
 SiteYear_strings['MTL'] = MTL = (MHW+MLW)/2
 
 ############## Outputs ###############################
-barrierBoundary = '{site}{year}_bndpoly_2sl'.format(**SiteYear_strings)   # Barrier Boundary polygon; create with TE_createBoundaryPolygon.py
+barrierBoundary = os.path.join(home, 'bndpoly_2sl'.format(**SiteYear_strings))   # Barrier Boundary polygon; create with TE_createBoundaryPolygon.py
 dh2trans = '{site}{year}_DH2trans'.format(**SiteYear_strings)             # DHigh within 25 m
 dl2trans = '{site}{year}_DL2trans'.format(**SiteYear_strings)             # DLow within 25 m
 arm2trans = '{site}{year}_arm2trans'.format(**SiteYear_strings)           # XYZ position of armoring along transect
 shl2trans = '{site}{year}_SHL2trans'.format(**SiteYear_strings)           # beach slope from lidar within 10m of transect
-shoreline = '{site}{year}_ShoreBetweenInlets'.format(**SiteYear_strings)  # Complete shoreline ready to become route in Pt. 2
+shoreline = os.path.join(home, 'ShoreBetweenInlets'.format(**SiteYear_strings))  # Complete shoreline ready to become route in Pt. 2
 elevGrid_5m = elevGrid+'_5m'                                              # Elevation resampled to 5 m grids
 slopeGrid = '{site}{year}_slope_5m'.format(**SiteYear_strings)            # Slope in 5 m grids
 
 # Transects
-tidy_clipped = "{site}{year}_tidyTrans_clipped".format(**SiteYear_strings)
+tidy_clipped = "tidyTrans_clipped".format(**SiteYear_strings)
 extTrans_fill = '{site}{year}_extTrans_fill'.format(**SiteYear_strings)
 extTrans_null = '{site}{year}_extTrans_null'.format(**SiteYear_strings)
 extTrans_shp = '{site}{year}_extTrans_shp'.format(**SiteYear_strings)
 
 # Points
-transPts_presort = '{site}{year}_5mPts_unsorted'.format(**SiteYear_strings)
-transPts = '{site}{year}_transPts_working'.format(**SiteYear_strings) 	# Outputs Transect Segment points
+transPts_presort = os.path.join(arcpy.env.scratchGDB, 'tran5mPts_unsorted'.format(**SiteYear_strings))
+transPts = 'transPts_working'.format(**SiteYear_strings) 	# Outputs Transect Segment points
 transPts_null = '{site}{year}_transPts_null'.format(**SiteYear_strings)
 transPts_fill= '{site}{year}_transPts_fill'.format(**SiteYear_strings)
 transPts_shp = '{site}{year}_transPts_shp'.format(**SiteYear_strings)

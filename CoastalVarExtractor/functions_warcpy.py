@@ -540,7 +540,8 @@ def CreateShoreBetweenInlets(shore_delineator, inletLines, out_line, ShorelinePt
     arcpy.SpatialJoin_analysis(split, ShorelinePts, split+'_join', "#","KEEP_COMMON", match_option="COMPLETELY_CONTAINS")
     if verbose:
         print("Dissolving the line to create {}...".format(out_line))
-    arcpy.Dissolve_management(split+'_join', out_line, [["FID_{}".format(shore_delineator)]], multi_part="SINGLE_PART")
+    dissolve_fld = "FID_{}".format(os.path.basename(shore_delineator))
+    arcpy.Dissolve_management(split+'_join', out_line, [[dissolve_fld]], multi_part="SINGLE_PART")
     return out_line
 
 def CreateShoreBetweenInlets_old(shore_delineator,inletLines, out_line, ShorelinePts, proj_code=26918):
@@ -655,7 +656,11 @@ def NewBNDpoly(old_boundary, modifying_feature, new_bndpoly='boundary_poly', ver
     if typeFC == "Line" or typeFC =='Polyline':
         arcpy.FeatureToPolygon_management(old_boundary,new_bndpoly,'1 METER')
     else:
-        arcpy.FeatureClassToFeatureClass_conversion(old_boundary,arcpy.env.workspace,new_bndpoly)
+        if len(os.path.split(new_bndpoly)[0]):
+            path = os.path.split(new_bndpoly)[0]
+        else:
+            path = arcpy.env.workspace
+        arcpy.FeatureClassToFeatureClass_conversion(old_boundary, path, new_bndpoly)
     typeFC = arcpy.Describe(modifying_feature).shapeType
     if typeFC == "Line" or typeFC == "Polyline":
         arcpy.Densify_edit(modifying_feature, 'DISTANCE', vertexdist)
@@ -921,6 +926,12 @@ def measure_Dist2Inlet(shoreline, in_trans, inletLines, tID_fld='sort_ID'):
                 # 3. Return the length of the shorter segment and save it in the DF
                 mindist = np.nanmin([lenR, lenL])
                 df = df.append({tID_fld:tID, 'Dist2Inlet':mindist}, ignore_index=True)
+                try:
+                    if abs(df[df[tID_fld]==tID-1] - mindist) > 300:
+                        print("CAUTION: Large change in Dist2Inlet values between transects {} and {}".format(tID-1, tID))
+                except:
+                    print("Error-catching is not working in Dist2Inlet.")
+                    pass
     df.index = df[tID_fld]
     df.drop(tID_fld, axis=1, inplace=True)
     fun.print_duration(start) # 25.8 seconds for Monomoy; converting shorelines to geom objects took longer time to complete.
@@ -1036,18 +1047,15 @@ def TransectsToPointsDF(in_trans, barrierBoundary, fc_out='', tID_fld='sort_ID',
     out_tidyclipped=os.path.join(arcpy.env.scratchGDB, 'tidytrans_clipped2island')
     if not arcpy.Exists(out_tidyclipped):
         arcpy.Clip_analysis(in_trans, barrierBoundary, out_tidyclipped)
-    print('Getting points every 5m along each transect and saving in dataframe...')
+    print('Getting points every 5m along each transect and saving in both dataframe and feature class...')
     # Initialize empty dataframe
     df = pd.DataFrame(columns=[tID_fld, 'seg_x', 'seg_y'])
     # Get shape object and tID value for each transects
-    with arcpy.da.SearchCursor(out_tidyclipped, ("SHAPE@", tID_fld)) as cursor:
-        for row in cursor:
-            ID = row[1]
-            line = row[0]
-            # Get points in 5m increments along transect and save to df
-            for i in range(0, int(line.length), step):
-                pt = line.positionAlongLine(i)[0]
-                df = df.append({tID_fld:ID, 'seg_x':pt.X, 'seg_y':pt.Y}, ignore_index=True)
+    for line, ID in arcpy.da.SearchCursor(out_tidyclipped, ("SHAPE@", tID_fld)):
+        # Get points in 5m increments along transect and save to df
+        for i in range(0, int(line.length), step):
+            pt = line.positionAlongLine(i)[0]
+            df = df.append({tID_fld:ID, 'seg_x':pt.X, 'seg_y':pt.Y}, ignore_index=True)
     if len(fc_out) > 1:
         print('Converting new dataframe to feature class...')
         fc_out = DFtoFC(df, fc_out, id_fld=tID_fld, spatial_ref = arcpy.Describe(in_trans).spatialReference)
