@@ -927,7 +927,7 @@ def measure_Dist2Inlet(shoreline, in_trans, inletLines, tID_fld='sort_ID'):
                 mindist = np.nanmin([lenR, lenL])
                 df = df.append({tID_fld:tID, 'Dist2Inlet':mindist}, ignore_index=True)
                 try:
-                    if abs(df[df[tID_fld]==tID-1] - mindist) > 300:
+                    if any(abs(df.loc[df[tID_fld]==tID-1, 'Dist2Inlet'] - mindist) > 300):
                         print("CAUTION: Large change in Dist2Inlet values between transects {} and {}".format(tID-1, tID))
                 except:
                     print("Error-catching is not working in Dist2Inlet.")
