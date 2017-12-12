@@ -5,14 +5,23 @@ This repository contains a python package (CoastalVarExtractor) to calculate coa
 
 The Methods OFR is titled "Evaluating barrier island characteristics and piping plover (Charadrius melodus) habitat availability along the U.S. Atlantic coast - geospatial approaches and methodology."
 
-## Requirements
+## Requires
 ArcGIS Pro, which includes an installation of Anaconda and Python 3.
 
-## Installation
+## Get started 
+We recommend that you install this package in the ArcGIS Pro conda environment through pip: 
 
-```python
+```bat
 \ArcGIS\Pro\bin\Python\Scripts\proenv
-pip install 
+pip install git+https://github.com/esturdivant-usgs/BI-geomorph-extraction.git
+```
+
+The Jupyter notebook files must be run within the ArcGIS Pro conda environment. To do so, type the following in your command prompt (assuming it has the default set-up and substituting path\to\dir with the location of the repository):
+
+```
+cd path\to\dir\BI-geomorph-extraction
+\ArcGIS\Pro\bin\Python\Scripts\proenv
+jupyter notebook
 ```
 
 ## How to implement:
@@ -38,12 +47,3 @@ pip install
 
 5. Run extractor.ipynb.
 
-## Notes about using ArcPy
-
-Jupyter notebook files must be run within the ArcGIS Pro conda environment. To do so, type the following in your command prompt (assuming it has the default set-up and substituting path\to\dir with the location of the repository):
-
-```
-cd path\to\dir\BI-geomorph-extraction
-\ArcGIS\Pro\bin\Python\Scripts\proenv
-jupyter notebook
-```
