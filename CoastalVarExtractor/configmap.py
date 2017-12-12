@@ -2,7 +2,7 @@
 """
 Standard values for CoastalVarExtractor.
 They should not need to be changed except to include more site value mappings.
-They do not require any input values. 
+They do not require any input values.
 """
 siteyear = {
     'Cedar2010':{'region': 'Delmarva', 'site': 'Cedar',
@@ -56,12 +56,6 @@ pt2trans_disttolerance = 25              # Maximum distance between transect and
 
 ########### Field names ##########################
 trans_flds0 = ['sort_ID','TRANSORDER', 'TRANSECTID', 'LRR', 'LR2', 'LSE', 'LCI90']
-trans_flds_arc = ['SL_Lat', 'SL_Lon', 'SL_x', 'SL_y', 'Bslope',
-    'DL_Lat', 'DL_Lon', 'DL_x', 'DL_y', 'DL_z', 'DL_zMHW',
-    'DH_Lat', 'DH_Lon', 'DH_x', 'DH_y', 'DH_z', 'DH_zMHW',
-    'Arm_Lat', 'Arm_Lon', 'Arm_x', 'Arm_y', 'Arm_z', 'Arm_zMHW',
-    'DistDH', 'DistDL', 'DistArm',
-    'Dist2Inlet', 'WidthPart', 'WidthLand', 'WidthFull']
 trans_flds_arc = ['SL_x', 'SL_y', 'Bslope',
     'DL_x', 'DL_y', 'DL_z', 'DL_zMHW', 'DL_snapX','DL_snapY',
     'DH_x', 'DH_y', 'DH_z', 'DH_zMHW', 'DH_snapX','DH_snapY',

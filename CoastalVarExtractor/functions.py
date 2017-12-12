@@ -305,17 +305,19 @@ def get_beachplot_values(pts_set):
 def plot_island_profile(ax, pts_set, MHW, MTL):
     # Get prep values
     tran, idmaxz, maxz, mz_xy, mz_dist, bend, btop = get_beachplot_values(pts_set)
+    maxz = maxz+MHW
+    btop = btop+MHW
 
     # Axes limits
     xllim = -tran.WidthFull*0.038
     xulim = tran.WidthFull + tran.WidthFull*0.038
     yllim = MTL-0.2
-    yulim = maxz+1.25
+    yulim = maxz++1.25
 
     # Subplot Labels
     ax.set_xlabel('Distance from shore (m)', fontsize = 12)
     ax.set_ylabel('Elevation (m)', fontsize = 12)
-    ax.set_title('Island cross-section, transect {}'.format(tran.sort_ID))
+    ax.set_title('Island cross-section, transect {:.0f}'.format(tran.sort_ID))
 
     # Plot line
     # ax.plot(pts_set['Dist_Seg'], pts_set['ptZmhw']+MHW, color='gray', linestyle='-', linewidth = 1)
@@ -352,17 +354,20 @@ def plot_island_profile(ax, pts_set, MHW, MTL):
 def plot_beach_profile(ax, pts_set, MHW, MTL, maxDH):
     # Get prep values
     tran, idmaxz, maxz, mz_xy, mz_dist, bend, btop = get_beachplot_values(pts_set)
+    maxz = maxz+MHW
+    btop = btop+MHW
+    maxDH = maxDH+MHW
 
     # Axes limits
     xllim = -5
     xulim = bend+bend*0.11
     yllim = MTL-0.2
-    yulim = maxz+0.25
+    yulim = maxz+0.25 if maxz > maxDH else maxDH
 
     # Subplot Labels
-    ax.set_xlabel('Distance from shore (m)', fontsize = 12)
-    ax.set_ylabel('Elevation (m)', fontsize = 12)
-    ax.set_title('Beach cross-section, transect {}'.format(tran.sort_ID))
+    ax.set_xlabel('Distance from seaward MHW (m)', fontsize = 12)
+    ax.set_ylabel('Elevation (m NAVD88)', fontsize = 12)
+    ax.set_title('Beach cross-section, transect {:.0f}'.format(tran.sort_ID))
 
     # Plot line
     # ax.plot(pts_set['Dist_Seg'], pts_set['ptZmhw']+MHW, color='gray', linestyle='-', linewidth = 1, marker='.')
@@ -370,11 +375,11 @@ def plot_beach_profile(ax, pts_set, MHW, MTL, maxDH):
     plt.annotate('Elevation', xy=(bend+bend*0.025, btop), color='gray')
 
     # Beach points
-    plt.scatter(tran.DistDL, tran.DL_z, color='orange')
+    plt.scatter(tran.DistDL, tran.DL_z, s=80, color='orange')
     plt.annotate('dlo', xy=(tran.DistDL-tran.DistDL*0.05, tran.DL_z+tran.DL_z*0.08), color='orange')
-    plt.scatter(tran.DistDH, tran.DH_z, color='red')
-    plt.annotate('dhi', xy=(tran.DistDH-bend*0.02, tran.DH_z+btop*0.08), color='red')
-    plt.scatter(tran.DistArm, tran.Arm_z, color='black')
+    plt.scatter(tran.DistDH, tran.DH_z, s=80, color='red')
+    plt.annotate('dhi', xy=(tran.DistDH-bend*0.02, tran.DH_z+btop*0.03), color='red')
+    plt.scatter(tran.DistArm, tran.Arm_z, s=80, color='black')
     plt.annotate('armor', xy=(tran.DistArm-20, tran.Arm_z+0.5), color='black')
 
     # Upper beach width and height
