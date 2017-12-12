@@ -1,12 +1,21 @@
 # BI-geomorph-extraction
-Extract barrier island metrics along transects for Bayesian Network Deep Dive
+Author: Emily Sturdivant; esturdivant@usgs.gov
 
-Requires: python 3, ArcPy
+This repository contains a python package (CoastalVarExtractor) to calculate coastal geomorphology variables along shore-normal transects. It is used to produce inputs for modeling geomorphology using a Bayesian Network and is a companion to a Methods Open-File Report (Zeigler and others, 2018) and various ScienceBase data releases that have been or will be published (e.g. Gutierrez and others, 2018). The repo also includes a 'notebooks' folder, which document the implementation instances of the code that produced the published datasets. 
 
-Author: Emily Sturdivant
-email: esturdivant@usgs.gov; bgutierrez@usgs.gov
+The Methods OFR is titled "Evaluating barrier island characteristics and piping plover (Charadrius melodus) habitat availability along the U.S. Atlantic coast - geospatial approaches and methodology."
 
-## How to run:
+## Requirements
+ArcGIS Pro, which includes an installation of Anaconda and Python 3.
+
+## Installation
+
+```python
+\ArcGIS\Pro\bin\Python\Scripts\proenv
+pip install 
+```
+
+## How to implement:
 
 1. Acquire all input feature classes - refer to input variables in addition to the list below. 
     - transect lines
@@ -15,9 +24,9 @@ email: esturdivant@usgs.gov; bgutierrez@usgs.gov
     - shoreline points
     - DEM
     
-2. Update values in setvars.py if needed.
+2. Review values (mostly file paths) in setvars.py and update if needed.
 
-3. Interactively run prepper.py in the Python console in ArcGIS Pro to make some of the input files. There are steps in the process that must be completed manually. Notes in the script describe the procedure for creating them. 
+3. Interactively run prepper.ipynb from the ArcGIS Pro to make some of the input files. There are steps in the process that must be completed manually. Notes in the script describe the procedure for creating them. 
     - inlet lines <- DEM + **manual**
     - armoring lines <- ortho + **manual**
     - boundary polygon <- DEM + shoreline points + inlet lines (+ manual)
