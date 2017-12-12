@@ -6,7 +6,6 @@
 
 # v1.0 – removed many unused functions. They are still in the former repo (plover_transect_extraction.TransectExtractoin.TE_functions_arcpy)
 
-import arcpy
 import time
 import os
 import collections
@@ -27,7 +26,7 @@ def SetInputFCname(inFCname, varname='', system_ext=True):
     if arcpy.Exists(inFCname):
         inFCname = inFCname
     else:
-        FCname = input("{} file (e.g. {} or '0' for none): ".format(varname, inFCname))
+        FCname = input("{} file with path (e.g. {} or '0' for none): ".format(varname, inFCname))
         if FCname == '0':
             FCname = False
         elif not arcpy.Exists(FCname):
@@ -41,7 +40,7 @@ def SetInputFCname(inFCname, varname='', system_ext=True):
             inFCname = False
             if system_ext:
                 raise SystemExit
-    return inFCname
+    return(inFCname)
 
 def unique_values(table, field):
     # return sorted unique values in field
@@ -285,6 +284,17 @@ def ProcessDEM(elevGrid, elevGrid_5m, utmSR):
     outAggreg.save(elevGrid_5m)
     return(elevGrid_5m)
 
+def RemoveTransectsOutsideBounds(trans, barrierBoundary, distance=200):
+    # Delete transects not within 200 m of the study area.
+    for row in arcpy.da.SearchCursor(barrierBoundary, ['SHAPE@']):
+        geom = row[0]
+        with arcpy.da.UpdateCursor(trans, ['SHAPE@']) as cursor:
+            for trow in cursor:
+                tran = trow[0]
+                if tran.disjoint(geom.buffer(distance)):
+                    cursor.deleteRow()
+    return(trans)
+
 def ExtendLine(fc, new_fc, distance, proj_code=26918):
     # From GIS stack exchange http://gis.stackexchange.com/questions/71645/a-tool-or-way-to-extend-line-by-specified-distance
     # layer must have map projection
@@ -298,13 +308,15 @@ def ExtendLine(fc, new_fc, distance, proj_code=26918):
             total = add(total, element)
             yield total
     # Project transects to UTM
+    if len(os.path.split(new_fc)) > 1:
+        fcpath, fcbase = os.path.split(new_fc)
     if not arcpy.Describe(fc).spatialReference.factoryCode == proj_code:
         print('Projecting {} to UTM'.format(fc))
         arcpy.Project_management(fc, fc+'utm_temp', arcpy.SpatialReference(proj_code))  # project to PCS
-        arcpy.FeatureClassToFeatureClass_conversion(fc+'utm_temp', arcpy.env.workspace, new_fc)
+        arcpy.FeatureClassToFeatureClass_conversion(fc+'utm_temp', fcpath, fcbase)
     else:
         print('{} is already projected in UTM.'.format(fc))
-        arcpy.FeatureClassToFeatureClass_conversion(fc, arcpy.env.workspace, new_fc)
+        arcpy.FeatureClassToFeatureClass_conversion(fc, fcpath, fcbase)
     #OID is needed to determine how to break up flat list of data by feature.
     coordinates = [[row[0], row[1]] for row in
                    arcpy.da.SearchCursor(fc, ["OID@", "SHAPE@XY"],
@@ -325,9 +337,27 @@ def ExtendLine(fc, new_fc, distance, proj_code=26918):
                 row[0] = newvert[j]
                 j+=1
                 cursor.updateRow(row) #FIXME: If the FC was projected as part of the function, returns RuntimeError: "The spatial index grid size is invalid."
-    return new_fc
+    if verbose:
+        print("Transects extended.")
+    return(new_fc)
 
-def PrepTransects_part2(trans_presort, LTextended, barrierBoundary=''):
+def RemoveDuplicates(trans_presort, orig_xtnd, verbose=True):
+    # 2. Remove orig transects from manually created transects
+    # If any of the original extended transects (with null values) are still present in trans_presort, delete them.
+    for row in arcpy.da.SearchCursor(orig_xtnd, ['SHAPE@']):
+        oldline = row[0]
+        with arcpy.da.UpdateCursor(trans_presort, ['SHAPE@']) as cursor:
+            for trow in cursor:
+                tran = trow[0]
+                if tran.equals(oldline):
+                    cursor.deleteRow()
+    # 3. Append original extended transects (with values) to the new transects
+    arcpy.Append_management(orig_xtnd, trans_presort)
+    if verbose:
+        print("{} ready for sorting.".format(trans_presort))
+    return(trans_presort)
+
+def PrepTransects_part2_old(trans_presort, LTextended, barrierBoundary=''):
     # 2. Remove orig transects from manually created transects
     # If any of the original extended transects (with null values) are still present in trans_presort, delete them.
     arcpy.SelectLayerByLocation_management(trans_presort, "ARE_IDENTICAL_TO", LTextended)
@@ -358,8 +388,76 @@ def SpatialSort(in_fc, out_fc, sort_corner='LL', reverse_order=False, startcount
                 cursor.updateRow([row[0],startcount+row[0]])
     return out_fc, rowcount
 
+def SortTransectPrep(spatialref, newfields = ['sort', 'sort_corn']):
+    multi_sort = input("Do we need to sort the transects in batches to preserve the order? (y/n) ")
+    sort_lines = 'sort_lines'
+    if multi_sort == 'y':
+        sort_lines = arcpy.CreateFeatureclass_management(arcpy.env.scratchGDB, sort_lines, "POLYLINE", spatial_reference=spatialref)
+        arcpy.AddField_management(sort_lines, newfields[0], 'SHORT', field_precision=2)
+        arcpy.AddField_management(sort_lines, newfields[1], 'TEXT', field_length=2)
+        print("MANUALLY: Add features to sort_lines. Indicate the order of use in 'sort' and the sort corner in 'sort_corn'.")
+    else:
+        sort_lines = []
+        # Corner from which to start sorting, LL = lower left, etc.
+        sort_corner = input("Sort corner (LL, LR, UL, UR): ")
+    return(sort_lines)
 
-def SortTransectsFromSortLines(in_fc, out_fc, sort_lines=[], sortfield='sort_ID', sort_corner='LL'):
+def SortTransectsFromSortLines(in_trans, out_trans, sort_lines=[], tID_fld='sort_ID', sort_corner='LL', verbose=True):
+    # Add the transect ID field to the transects if it doesn't already exist.
+    temppath = os.path.join(arcpy.env.scratchGDB, 'trans_')
+    try:
+        arcpy.AddField_management(in_trans, tID_fld, 'SHORT')
+    except:
+        pass
+    # If sort_lines is blank ([]), go ahead and sort the transects based on sort_corner argument.
+    if not len(sort_lines):
+        out_trans = arcpy.Sort_management(in_trans, out_trans, [['Shape', 'ASCENDING']], sort_corner) # Sort from lower lef
+    else:
+        if verbose:
+            print("Creating new feature class {} to hold sorted transects...".format(out_trans))
+        out_trans = arcpy.CreateFeatureclass_management(arcpy.env.workspace, os.path.basename(out_trans), "POLYLINE", in_trans, spatial_reference=in_trans)
+        dsc = arcpy.Describe(in_trans)
+        fieldnames = [field.name for field in dsc.fields if not field.name == dsc.OIDFieldName] + ['SHAPE@']
+        # Sort the sort_lines by field 'sort'
+        # Loop through ordered sort_lines
+        # Make a new FC with only the transects that intersect the given sort line.
+        # Sort the subsetted transects and append each one to out_trans
+        if verbose:
+            print("Sorting sort lines by field sort...")
+        sort_lines2 = arcpy.Sort_management(sort_lines, sort_lines+'2', [['sort', 'ASCENDING']])
+        if verbose:
+            print("For each line, creating subset of transects and adding them in order to the new FC...")
+        for sline, scorner, reverse_order in arcpy.da.SearchCursor(sort_lines2, ['SHAPE@', 'sort_corn', 'reverse']):
+            # Get transects that intersect sort line: copy transects, then delete all rows that don't intersect.
+            temp1 = arcpy.FeatureClassToFeatureClass_conversion(in_trans, arcpy.env.scratchGDB, 'trans_subset')
+            with arcpy.da.UpdateCursor(temp1, ['SHAPE@']) as cursor:
+                for trow in cursor:
+                    tran = trow[0]
+                    if tran.disjoint(sline):
+                        cursor.deleteRow()
+            # Sort the remaining transects.
+            temp2 = arcpy.Sort_management(temp1, temppath+'sub_sort{}'.format(scorner), [['Shape', 'ASCENDING']], scorner)
+            # Reverse the order if specified.
+            if reverse_order == 'T':
+                # Reverse the sort order, i.e. reverse the OID values
+                # Copy OID values to tID_fld then sort in descending order, which will reverse the OID values
+                with arcpy.da.UpdateCursor(temp2, ['OID@', tID_fld]) as cursor:
+                    for row in cursor:
+                        cursor.updateRow([row[0], row[0]])
+                temp2 = arcpy.Sort_management(temp2, temppath+'subrev_sort{}'.format(scorner), [[tID_fld, 'DESCENDING']])
+            # Append the new section of sorted transects to those already completed.
+            with arcpy.da.InsertCursor(out_trans, fieldnames) as icur:
+                for row in arcpy.da.SearchCursor(temp2, fieldnames):
+                    icur.insertRow(row)
+    if verbose:
+        print("Copying the generated OID values to the transect ID field ({})...".format(tID_fld))
+    # Copy the OID values, which should be correctly sorted, to the tID_fld
+    with arcpy.da.UpdateCursor(out_trans, ['OID@', tID_fld]) as cursor:
+        for row in cursor:
+            cursor.updateRow([row[0], row[0]])
+    return(out_trans)
+
+def SortTransectsFromSortLines_old(in_fc, out_fc, sort_lines=[], sortfield='sort_ID', sort_corner='LL'):
     # Alternative to SpatialSort() when sorting must be done in spatial groups
     try:
         # add the transect ID field to the transects if it doesn't already exist.
@@ -370,11 +468,14 @@ def SortTransectsFromSortLines(in_fc, out_fc, sort_lines=[], sortfield='sort_ID'
         # If sort_lines is blank ([]),
         base_fc, ct = SortTransectsByFeature(in_fc, 0, sort_lines, [1, sort_corner], sortfield)
     else:
-        #
-        sort_lines_arr = arcpy.da.FeatureClassToNumPyArray(sort_lines, ['sort', 'sort_corn'])
-        base_fc, ct = SortTransectsByFeature(in_fc, 0, sort_lines, sort_lines_arr[0])
+        # Sort the sort lines by the desginated field.
+        sort_lines2 = sort_lines+'_sorted'
+        arcpy.Sort_management(sort_lines, sort_lines2, [['sort', 'ASCENDING']])
+        # Convert the file to a numpy array to access the values.
+        sort_lines_arr = arcpy.da.FeatureClassToNumPyArray(sort_lines2, ['sort', 'sort_corn'])
+        base_fc, ct = SortTransectsByFeature(in_fc, 0, sort_lines2, sort_lines_arr[0])
         for row in sort_lines_arr[1:]:
-            next_fc, ct = SortTransectsByFeature(in_fc, ct, sort_lines, row)
+            next_fc, ct = SortTransectsByFeature(in_fc, ct, sort_lines2, row)
             arcpy.Append_management(next_fc, base_fc) # Append each new FC to the base.
     # arcpy.FeatureClassToFeatureClass_conversion(base_fc, arcpy.env.workspace, out_fc)
     SetStartValue(base_fc, out_fc, sortfield, start=1)
@@ -411,18 +512,6 @@ def SetStartValue(trans_sort_1, extendedTrans, tID_fld, start=1):
         print("First value was already {}.".format(start))
     return
 
-def PreprocessTransects(site,old_transects=False,sort_corner='LL',sortfield='sort_ID',distance=3000):
-    # In copy of transects feature class, create and populate sort field (sort_ID), and extend transects
-    if not old_transects:
-        old_transects = '{}_LTtransects'.format(site)
-    new_transects = '{}_LTtrans_sort'.format(site)
-    extTransects = '{}_extTrans'.format(site)
-    # Create field trans_order and sort by that
-    SpatialSort(old_transects,new_transects,sort_corner,sortfield=sortfield)
-    # extend lines
-    ExtendLine(new_transects,extTransects,distance)
-    return extTransects
-
 def CreateShoreBetweenInlets(shore_delineator, inletLines, out_line, ShorelinePts, proj_code=26918, verbose=True):
     # initialize temp layer names
     split = os.path.join(arcpy.env.scratchGDB, 'shoreline_split')
@@ -451,7 +540,8 @@ def CreateShoreBetweenInlets(shore_delineator, inletLines, out_line, ShorelinePt
     arcpy.SpatialJoin_analysis(split, ShorelinePts, split+'_join', "#","KEEP_COMMON", match_option="COMPLETELY_CONTAINS")
     if verbose:
         print("Dissolving the line to create {}...".format(out_line))
-    arcpy.Dissolve_management(split+'_join', out_line, [["FID_{}".format(shore_delineator)]])
+    dissolve_fld = "FID_{}".format(os.path.basename(shore_delineator))
+    arcpy.Dissolve_management(split+'_join', out_line, [[dissolve_fld]], multi_part="SINGLE_PART")
     return out_line
 
 def CreateShoreBetweenInlets_old(shore_delineator,inletLines, out_line, ShorelinePts, proj_code=26918):
@@ -560,13 +650,17 @@ def DEMtoFullShorelinePoly(elevGrid, MTL, MHW, inletLines, ShorelinePts):
     #DeleteTempFiles()
     return(bndpoly)
 
-def NewBNDpoly(old_boundary, modifying_feature, new_bndpoly='boundary_poly', vertexdist='25 METERS', snapdist='25 METERS'):
+def NewBNDpoly(old_boundary, modifying_feature, new_bndpoly='boundary_poly', vertexdist='25 METERS', snapdist='25 METERS', verbose=True):
     # boundary = input line or polygon of boundary to be modified by newline
     typeFC = arcpy.Describe(old_boundary).shapeType
     if typeFC == "Line" or typeFC =='Polyline':
         arcpy.FeatureToPolygon_management(old_boundary,new_bndpoly,'1 METER')
     else:
-        arcpy.FeatureClassToFeatureClass_conversion(old_boundary,arcpy.env.workspace,new_bndpoly)
+        if len(os.path.split(new_bndpoly)[0]):
+            path = os.path.split(new_bndpoly)[0]
+        else:
+            path = arcpy.env.workspace
+        arcpy.FeatureClassToFeatureClass_conversion(old_boundary, path, new_bndpoly)
     typeFC = arcpy.Describe(modifying_feature).shapeType
     if typeFC == "Line" or typeFC == "Polyline":
         arcpy.Densify_edit(modifying_feature, 'DISTANCE', vertexdist)
@@ -577,6 +671,8 @@ def NewBNDpoly(old_boundary, modifying_feature, new_bndpoly='boundary_poly', ver
     arcpy.Densify_edit(new_bndpoly, 'DISTANCE', vertexdist)
     #arcpy.Densify_edit(modifying_feature,'DISTANCE',vertexdist)
     arcpy.Snap_edit(new_bndpoly,[[modifying_feature, 'VERTEX',snapdist]]) # Takes a while
+    if verbose:
+        print("Created: {}".format(new_bndpoly))
     return new_bndpoly # string name of new polygon
 
 def JoinFields(targetfc, sourcefile, dest2src_fields, joinfields=['sort_ID']):
@@ -684,7 +780,7 @@ def ArmorLineToTrans_PD(in_trans, armorLines, sl2trans_df, tID_fld, proj_code, e
     arm2trans = os.path.join(arcpy.env.scratchGDB, "arm2trans")
     flds = ['Arm_x', 'Arm_y', 'Arm_z']
     if not arcpy.Exists(armorLines) or not int(arcpy.GetCount_management(armorLines).getOutput(0)):
-        print('Armoring file either missing or empty so we will proceed without armoring data. If shorefront tampering is present at this site, cancel the operations to digitize.')
+        print('\nArmoring file either missing or empty so we will proceed without armoring data. If shorefront tampering is present at this site, cancel the operations to digitize.')
         df = pd.DataFrame(columns=flds)
     else:
         # Create armor points with XY fields
@@ -710,7 +806,7 @@ def add_shorelinePts2Trans(in_trans, in_pts, shoreline, tID_fld='sort_ID', proxi
     #FIXME: save previous cursor (or this one) to dict to reduce iterations https://gis.stackexchange.com/a/30235
     start = time.clock()
     if verbose:
-        print("\nJoining shoreline points to transects:")
+        print("\nJoining shoreline points to transects...")
     # Find fieldname of slope field
     fmapdict = find_similar_fields('sl', in_pts, ['slope'])
     slp_fld = fmapdict['slope']['src']
@@ -726,7 +822,7 @@ def add_shorelinePts2Trans(in_trans, in_pts, shoreline, tID_fld='sort_ID', proxi
         df.loc[tID, ['SL_x', 'SL_y', 'Bslope']] = newrow
         if verbose:
             if tID % 100 < 1:
-                print('Duration at transect {}: {}'.format(tID, fun.print_duration(start, True)))
+                print('...duration at transect {}: {}'.format(tID, fun.print_duration(start, True)))
     fun.print_duration(start)
     return(df)
 
@@ -807,22 +903,37 @@ def find_ClosestPt2Trans_snap(in_trans, in_pts, trans_df, prefix, tID_fld='sort_
 Dist2Inlet
 """
 def measure_Dist2Inlet(shoreline, in_trans, inletLines, tID_fld='sort_ID'):
+    # measure distance along oceanside shore from transect to inlet.
+    # Uses three SearchCursors (arcpy's data access module).
+    # Stores values in new data frame.
+    # Initialize
     start = time.clock()
     utmSR = arcpy.Describe(in_trans).spatialReference
     df = pd.DataFrame(columns=[tID_fld, 'Dist2Inlet']) # initialize dataframe
-    inlets = [row[0] for row in arcpy.da.SearchCursor(inletLines, ("SHAPE@"))] # get inlet features as geometry objects; faster than cursor in depths of loop
-    for row in arcpy.da.SearchCursor(shoreline, ("SHAPE@")): # highest level loop through lines is faster than through transects
+    # Get inlets geometry objects
+    inlets = [row[0] for row in arcpy.da.SearchCursor(inletLines, ("SHAPE@"))]
+    # Loop through shoreline features
+    for row in arcpy.da.SearchCursor(shoreline, ("SHAPE@")):
         line = row[0]
+        # Loop through transect features
         for [transect, tID] in arcpy.da.SearchCursor(in_trans, ("SHAPE@",  tID_fld)):
-            # [transect, tID] = trow
-            if not line.disjoint(transect): #line and transect overlap
-                # cut shoreline with transect
+            if not line.disjoint(transect): # If shoreline and transect overlap...
+                # 1. cut shoreline at the transect
                 [rseg, lseg] = line.cut(transect)
-                # get length for only segs that touch inlets # use only first part in case of multipart feature
+                # 2. if the shoreline segment touches any inlet, get the segment length.
+                # in case of multipart features, use only the first part
+                # What happens when the shoreline and transect intersect in multiple places?
                 lenR = arcpy.Polyline(rseg.getPart(0), utmSR).length if not all(rseg.disjoint(i) for i in inlets) else np.nan
                 lenL = arcpy.Polyline(lseg.getPart(0), utmSR).length if not all(lseg.disjoint(i) for i in inlets) else np.nan
+                # 3. Return the length of the shorter segment and save it in the DF
                 mindist = np.nanmin([lenR, lenL])
                 df = df.append({tID_fld:tID, 'Dist2Inlet':mindist}, ignore_index=True)
+                try:
+                    if any(abs(df.loc[df[tID_fld]==tID-1, 'Dist2Inlet'] - mindist) > 300):
+                        print("CAUTION: Large change in Dist2Inlet values between transects {} and {}".format(tID-1, tID))
+                except:
+                    print("Error-catching is not working in Dist2Inlet.")
+                    pass
     df.index = df[tID_fld]
     df.drop(tID_fld, axis=1, inplace=True)
     fun.print_duration(start) # 25.8 seconds for Monomoy; converting shorelines to geom objects took longer time to complete.
@@ -904,7 +1015,7 @@ def calc_IslandWidths(in_trans, barrierBoundary, out_clipped='clip2island', tID_
     home = arcpy.env.workspace
     out_clipped = os.path.join(arcpy.env.scratchGDB, out_clipped)
     if not arcpy.Exists(out_clipped):
-        print('Clipping the transect to the barrier island boundaries...')
+        print('Clipping the transects to the barrier island boundaries...')
         arcpy.Clip_analysis(os.path.join(home, in_trans), os.path.join(home, barrierBoundary), out_clipped) # ~30 seconds
     # WidthPart - spot-checking verifies the results, but it should additionally include a check to ensure that the first transect part encountered intersects the shoreline
     print('Getting the width along each transect of the oceanside land (WidthPart)...')
@@ -917,6 +1028,7 @@ def calc_IslandWidths(in_trans, barrierBoundary, out_clipped='clip2island', tID_
     # WidthFull
     print('Getting the width along each transect of the entire barrier (WidthFull)...')
     verts = FCtoDF(out_clipped, id_fld=tID_fld, explode_to_points=True)
+    verts.drop(tID_fld, axis=1, inplace=True)
     d = verts.groupby(tID_fld)['SHAPE@X', 'SHAPE@Y'].agg(lambda x: x.max() - x.min())
     widthfull = np.hypot(d['SHAPE@X'], d['SHAPE@Y'])
     widthfull.name = 'WidthFull'
@@ -937,18 +1049,15 @@ def TransectsToPointsDF(in_trans, barrierBoundary, fc_out='', tID_fld='sort_ID',
     out_tidyclipped=os.path.join(arcpy.env.scratchGDB, 'tidytrans_clipped2island')
     if not arcpy.Exists(out_tidyclipped):
         arcpy.Clip_analysis(in_trans, barrierBoundary, out_tidyclipped)
-    print('Getting points every 5m along each transect and saving in dataframe...')
+    print('Getting points every 5m along each transect and saving in both dataframe and feature class...')
     # Initialize empty dataframe
     df = pd.DataFrame(columns=[tID_fld, 'seg_x', 'seg_y'])
     # Get shape object and tID value for each transects
-    with arcpy.da.SearchCursor(out_tidyclipped, ("SHAPE@", tID_fld)) as cursor:
-        for row in cursor:
-            ID = row[1]
-            line = row[0]
-            # Get points in 5m increments along transect and save to df
-            for i in range(0, int(line.length), step):
-                pt = line.positionAlongLine(i)[0]
-                df = df.append({tID_fld:ID, 'seg_x':pt.X, 'seg_y':pt.Y}, ignore_index=True)
+    for line, ID in arcpy.da.SearchCursor(out_tidyclipped, ("SHAPE@", tID_fld)):
+        # Get points in 5m increments along transect and save to df
+        for i in range(0, int(line.length), step):
+            pt = line.positionAlongLine(i)[0]
+            df = df.append({tID_fld:ID, 'seg_x':pt.X, 'seg_y':pt.Y}, ignore_index=True)
     if len(fc_out) > 1:
         print('Converting new dataframe to feature class...')
         fc_out = DFtoFC(df, fc_out, id_fld=tID_fld, spatial_ref = arcpy.Describe(in_trans).spatialReference)
@@ -962,6 +1071,8 @@ def FCtoDF(fc, xy=False, dffields=[], fill=-99999, id_fld=False, extra_fields=[]
     # 1. Convert FC to Numpy array
     if explode_to_points:
         message = 'Converting feature class vertices to array with X and Y...'
+        if not id_fld:
+            print('Error: if explode_to_points is set to True, id_fld must be specified.')
         fcfields = [id_fld, 'SHAPE@X', 'SHAPE@Y', 'OID@']
     else:
         fcfields = [f.name for f in arcpy.ListFields(fc)]
@@ -1072,6 +1183,19 @@ def DFtoFC_large(pts_df, out_fc, spatial_ref, df_id='SplitSort', xy=["seg_x", "s
         print("OUTPUT: {}".format(out_fc))
     fun.print_duration(start)
     return(out_fc)
+
+def DFtoTable(df, tbl, fill=-99999):
+    # Convert data frame to Arc Table by converting to np.array with fill values and then to Table
+    try:
+        arr = df.select_dtypes(exclude=['object']).fillna(fill).to_records()
+    except ValueError:
+        df.index.name = 'index'
+        arr = df.select_dtypes(exclude=['object']).fillna(fill).to_records()
+    if not os.path.split(tbl)[0]: # if no path is provided, default to scratch gdb
+        tbl = os.path.join(arcpy.env.scratchGDB, tbl)
+    arcpy.Delete_management(tbl)
+    arcpy.da.NumPyArrayToTable(arr, tbl)
+    return(tbl)
 
 def JoinDFtoRaster(df, rst_ID, out_rst='', fill=-99999, id_fld='sort_ID', val_fld=''):
     # Join fields from df to rst_ID to create new out_rst

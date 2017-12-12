@@ -7,6 +7,9 @@ import collections
 import pandas as pd
 import numpy as np
 from operator import add
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.style.use('ggplot')
 
 def print_duration(start, suppress=False):
     duration = time.clock() - start
@@ -45,7 +48,7 @@ def check_id_fld(df, id_fld, fill=-99999):
                 raise IndexError("There are errors in the identified ID column, but not in the index. However, we can't be sure that the index is correct because the name does not match the ID.")
         elif not bad_id_col and bad_idx:
             df.index = df[id_fld]
-        elif not bad_id_col and not bad_idx: 
+        elif not bad_id_col and not bad_idx:
             if (df.index == df[id_fld]).all(): # if the index is already equal to the id_fld
                 df.index.name = id_fld
             else:
@@ -174,3 +177,221 @@ def aggregate_z(df, MHW, id_fld, zfld, fill):
     if input_fill:
         df.fillna(fill, inplace=True)
     return(df, zmhw)
+
+# def plot_beach_profile(ax, pts_set, MHW, MTL):
+#     # Get the transect-averaged values
+#     tran = pts_set.iloc[0]
+#
+#     # Get maximum Z values
+#     idmaxz = pts_set['ptZmhw'].idxmax()
+#     maxz = pts_set['ptZmhw'].loc[idmaxz]
+#     mz_xy = pts_set[['seg_x', 'seg_y']].loc[idmaxz]
+#     mz_dist = np.hypot(mz_xy.seg_x - tran.SL_x, mz_xy.seg_y- tran.SL_y)
+#
+#     # Subplot Labels
+#     ax.set_xlabel('Distance from shore (m)', fontsize = 12)
+#     ax.set_ylabel('Elevation (m)', fontsize = 12)
+#     ax.set_title('Beach cross-section, transect {}'.format(int(pts_set['sort_ID'].head(1))))
+#
+#     if not np.isnan(tran.DistDH):
+#         bend = tran.DistDH
+#         btop = tran.DH_z
+#     elif not np.isnan(mz_dist):
+#         bend = mz_dist
+#         btop = maxz
+#     else:
+#         bend = 200
+#         btop = 4
+#
+#     # Plot line
+#     # ax.plot(pts_set['Dist_Seg'], pts_set['ptZmhw']+MHW, color='gray', linestyle='-', linewidth = 1, marker='.')
+#     ax.fill_between(pts_set['Dist_Seg'], pts_set['ptZmhw']+MHW, where=pts_set['ptZmhw']+MHW > MTL, facecolor='grey', alpha=0.5)
+#     plt.annotate('Elevation', xy=(bend, btop), xytext=(bend+bend*0.025, btop), color='gray')
+#
+#     # Beach points
+#     plt.scatter(tran.DistDL, tran.DL_z, color='black')
+#     plt.annotate('dlo', xy=(tran.DistDL, tran.DL_z), xytext=(tran.DistDL-tran.DistDL*0.05, tran.DL_z+tran.DL_z*0.11),
+#                 arrowprops=dict(facecolor='orange', shrink=0.005))
+#     plt.scatter(tran.DistDH, tran.DH_z, color='black')
+#     plt.annotate('dhi', xy=(tran.DistDH, tran.DH_z), xytext=(tran.DistDH-bend*0.05, tran.DH_z+btop*0.11),
+#                 arrowprops=dict(facecolor='orange', shrink=0.005))
+#     plt.scatter(tran.DistArm, tran.Arm_z, color='black')
+#     plt.annotate('armor', xy=(tran.DistArm, tran.Arm_z), xytext=(tran.DistArm-20, tran.Arm_z+0.5),
+#                 arrowprops=dict(facecolor='orange', shrink=0.005))
+#
+#     # Upper beach width and height
+#     plt.plot([MHW, tran.uBW],[MHW, MHW], color='orange', linestyle='-', linewidth = 1.5)
+#     plt.annotate('uBW: {:.1f}'.format(tran.uBW), xy=(5, MHW+0.06),
+#                  xytext=(tran.uBW*0.83, MHW+0.05), color='orange')
+#     plt.plot([tran.uBW, tran.uBW],[MHW, MHW + tran.uBH], color='orange', linestyle='-', linewidth = 1.5, marker='|')
+#     plt.annotate('uBH: {:.1f}'.format(tran.uBH), xy=(tran.uBW, (MHW + tran.uBH)),
+#                  xytext=(tran.uBW+bend*0.03, MHW + tran.uBH*0.5), color='orange')
+#
+#     # ax.axis('scaled')
+#     ax.set_xlim([-5, bend+bend*0.11])
+#     ax.axhline(y=MTL, ls='dotted', color='black')
+#     plt.annotate('MTL', xy=(0, MTL), xytext=(-4, MTL-0.2), color='gray')
+#     ax.axhline(y=MHW, ls='dotted', color='black')
+#     plt.annotate('MHW', xy=(0, MHW), xytext=(-4, MHW-0.2), color='gray')
+#
+# def plot_island_profile(ax, pts_set, MHW, MTL):
+#     # Get the transect-averaged values
+#     tran = pts_set.iloc[0]
+#
+#     # Get maximum Z values
+#     idmaxz = pts_set['ptZmhw'].idxmax()
+#     maxz = pts_set['ptZmhw'].loc[idmaxz]
+#     mz_xy = pts_set[['seg_x', 'seg_y']].loc[idmaxz]
+#     mz_dist = np.hypot(mz_xy.seg_x - tran.SL_x, mz_xy.seg_y- tran.SL_y)
+#
+#     # Subplot Labels
+#     ax.set_xlabel('Distance from shore (m)', fontsize = 12)
+#     ax.set_ylabel('Elevation (m)', fontsize = 12)
+#     ax.set_title('Island cross-section, transect {}'.format(int(pts_set['sort_ID'].head(1))))
+#
+#     # Plot line
+#     # ax.plot(pts_set['Dist_Seg'], pts_set['ptZmhw']+MHW, color='gray', linestyle='-', linewidth = 1)
+#     ax.fill_between(pts_set['Dist_Seg'], pts_set['ptZmhw']+MHW, where=pts_set['ptZmhw']+MHW > MTL, facecolor='grey', alpha=0.5)
+#     plt.annotate('Elevation', xy=(tran.WidthPart, float(pts_set['ptZmhw'].tail(1))), xytext=(tran.WidthPart-50, float(pts_set['ptZmhw'].tail(1))+0.6), color='gray')
+#
+#     # #Island widths
+#     plt.plot([0, tran.WidthPart],[MHW+0.2, MHW+0.2], color='green', linestyle='-', linewidth = 2, alpha=0.5)
+#     plt.annotate('WidthPart: {:.1f}'.format(tran.WidthPart), xy=(5, MHW+0.2),
+#                  xytext=(tran.WidthFull*0.03, MHW+0.24), color='green')
+#     plt.plot([0, tran.WidthFull],[MHW+0.06, MHW+0.06], color='green', linestyle='-', linewidth = 2, alpha=0.5)
+#     plt.annotate('WidthFull: {:.1f}'.format(tran.WidthFull), xy=(5, MHW+0.06),
+#                  xytext=(tran.WidthFull*0.83, MHW-0.2), color='green')
+#
+#     # #Beach points
+#     plt.scatter(tran.DistDL, tran.DL_z, color='black')
+#     plt.scatter(tran.DistDH, tran.DH_z, color='black')
+#     plt.scatter(tran.DistArm, tran.Arm_z, color='black')
+#
+#     # #Upper beach width and height
+#     plt.plot([MHW, tran.uBW],[MHW, MHW], color='orange', linestyle='-', linewidth = 1.5)
+#     plt.plot([tran.uBW, tran.uBW],[MHW, MHW + tran.uBH], color='orange', linestyle='-', linewidth = 1.5, marker='|')
+#
+#
+#     # #ax.axis('scaled')
+#     ax.set_xlim([-tran.WidthFull*0.038, tran.WidthFull + tran.WidthFull*0.038])
+#     ax.axhline(y=MTL, ls='dotted', color='black')
+#     plt.annotate('MTL', xy=(5, MTL), xytext=(-tran.WidthFull*0.03, MTL-0.15), color='gray')
+#     ax.axhline(y=MHW, ls='dotted', color='black')
+#     plt.annotate('MHW', xy=(5, MHW), xytext=(-tran.WidthFull*0.03, MHW-0.15), color='gray')
+
+def get_beachplot_values(pts_set):
+    tran = pts_set.iloc[0]
+
+    # Get maximum Z values
+    idmaxz = pts_set['ptZmhw'].idxmax()
+    maxz = pts_set['ptZmhw'].loc[idmaxz]
+    mz_xy = pts_set[['seg_x', 'seg_y']].loc[idmaxz]
+    mz_dist = np.hypot(mz_xy.seg_x - tran.SL_x, mz_xy.seg_y- tran.SL_y)
+
+    # Get beach end and beach top
+    if not np.isnan(tran.DistDH):
+        bend = tran.DistDH
+        btop = tran.DH_z
+    elif not np.isnan(mz_dist):
+        bend = mz_dist
+        btop = maxz
+    else:
+        bend = 200
+        btop = 4
+
+    # Return
+    return(tran, idmaxz, maxz, mz_xy, mz_dist, bend, btop)
+
+def plot_island_profile(ax, pts_set, MHW, MTL):
+    # Get prep values
+    tran, idmaxz, maxz, mz_xy, mz_dist, bend, btop = get_beachplot_values(pts_set)
+
+    # Axes limits
+    xllim = -tran.WidthFull*0.038
+    xulim = tran.WidthFull + tran.WidthFull*0.038
+    yllim = MTL-0.2
+    yulim = maxz+1.25
+
+    # Subplot Labels
+    ax.set_xlabel('Distance from shore (m)', fontsize = 12)
+    ax.set_ylabel('Elevation (m)', fontsize = 12)
+    ax.set_title('Island cross-section, transect {}'.format(tran.sort_ID))
+
+    # Plot line
+    # ax.plot(pts_set['Dist_Seg'], pts_set['ptZmhw']+MHW, color='gray', linestyle='-', linewidth = 1)
+    ax.fill_between(pts_set['Dist_Seg'], pts_set['ptZmhw']+MHW, y2=yllim, facecolor='grey', alpha=0.5)
+    plt.annotate('Elevation', xy=(tran.WidthFull-50, float(pts_set['ptZmhw'].tail(1))+0.6), color='gray')
+    ax.axvspan(xmin=pts_set['Dist_Seg'].max(), xmax=xulim, color='grey', alpha=0.1)
+    plt.annotate('ELEVATION UNKNOWN', xy=(np.mean([pts_set['Dist_Seg'].max(), tran.WidthFull]), np.mean([maxz, MTL])), color='gray')
+
+    # #Island widths
+    plt.plot([0, tran.WidthPart],[MHW+0.2, MHW+0.2], color='green', linestyle='-', linewidth = 2, alpha=0.5)
+    plt.annotate('WidthPart: {:.1f}'.format(tran.WidthPart), xy=(tran.WidthFull*0.83, MHW+0.24), color='green')
+    plt.plot([0, tran.WidthFull],[MHW+0.06, MHW+0.06], color='green', linestyle='-', linewidth = 2, alpha=0.5)
+    plt.annotate('WidthFull: {:.1f}'.format(tran.WidthFull), xy=(tran.WidthFull*0.83, MHW-0.12), color='green')
+
+    # #Beach points
+    plt.scatter(tran.DistDL, tran.DL_z, color='orange')
+    plt.scatter(tran.DistDH, tran.DH_z, color='red')
+    plt.scatter(tran.DistArm, tran.Arm_z, color='black')
+
+    # #Upper beach width and height
+    plt.plot([MHW, tran.uBW],[MHW, MHW], color='orange', linestyle='-', linewidth = 1.5)
+    plt.plot([tran.uBW, tran.uBW],[MHW, MHW + tran.uBH], color='orange', linestyle='-', linewidth = 1.5, marker='|')
+
+    # #ax.axis('scaled')
+    ax.set_xlim([xllim, xulim])
+    ax.set_ylim([yllim, yulim])
+    # ax.axhline(y=MTL, ls='dotted', color='black')
+    ax.axhspan(ymin=-0.5, ymax=MTL, xmin=xllim, xmax=xulim, alpha=0.2, color='blue')
+    plt.annotate('MTL', xy=(-tran.WidthFull*0.02, MTL-0.15), color='blue')
+    # ax.axhline(y=MHW, ls='dotted', color='black')
+    ax.axhspan(ymin=-0.5, ymax=MHW, xmin=xllim, xmax=xulim, alpha=0.2, color='blue')
+    plt.annotate('MHW', xy=(-tran.WidthFull*0.02, MHW-0.15), color='blue', alpha=0.7)
+
+def plot_beach_profile(ax, pts_set, MHW, MTL, maxDH):
+    # Get prep values
+    tran, idmaxz, maxz, mz_xy, mz_dist, bend, btop = get_beachplot_values(pts_set)
+
+    # Axes limits
+    xllim = -5
+    xulim = bend+bend*0.11
+    yllim = MTL-0.2
+    yulim = maxz+0.25
+
+    # Subplot Labels
+    ax.set_xlabel('Distance from shore (m)', fontsize = 12)
+    ax.set_ylabel('Elevation (m)', fontsize = 12)
+    ax.set_title('Beach cross-section, transect {}'.format(tran.sort_ID))
+
+    # Plot line
+    # ax.plot(pts_set['Dist_Seg'], pts_set['ptZmhw']+MHW, color='gray', linestyle='-', linewidth = 1, marker='.')
+    ax.fill_between(pts_set['Dist_Seg'], pts_set['ptZmhw']+MHW, y2=yllim, facecolor='grey', alpha=0.5)
+    plt.annotate('Elevation', xy=(bend+bend*0.025, btop), color='gray')
+
+    # Beach points
+    plt.scatter(tran.DistDL, tran.DL_z, color='orange')
+    plt.annotate('dlo', xy=(tran.DistDL-tran.DistDL*0.05, tran.DL_z+tran.DL_z*0.08), color='orange')
+    plt.scatter(tran.DistDH, tran.DH_z, color='red')
+    plt.annotate('dhi', xy=(tran.DistDH-bend*0.02, tran.DH_z+btop*0.08), color='red')
+    plt.scatter(tran.DistArm, tran.Arm_z, color='black')
+    plt.annotate('armor', xy=(tran.DistArm-20, tran.Arm_z+0.5), color='black')
+
+    # Upper beach width and height
+    uBW = tran.uBW
+    uBH = tran.uBH
+    plt.plot([MHW, uBW],[MHW, MHW], color='orange', linestyle='-', linewidth = 1.5)
+    plt.annotate('uBW: {:.1f}'.format(uBW), xy=(uBW*0.83, MHW+0.05), color='orange')
+    plt.plot([uBW, uBW],[MHW, MHW + uBH], color='orange', linestyle='-', linewidth = 1.5, marker='|')
+    plt.annotate('uBH: {:.1f}'.format(uBH), xy=(uBW+bend*0.03, MHW + uBH*0.5), color='orange')
+
+    # Axis/context
+    ax.set_xlim([-5, bend+bend*0.11])
+    ax.set_ylim([yllim, yulim])
+    ax.minorticks_on()
+    ax.axhspan(ymin=-0.5, ymax=MTL, xmin=xllim, xmax=xulim, alpha=0.2, color='blue')
+    plt.annotate('MTL', xy=(-4, MTL-0.12), color='blue')
+    ax.axhspan(ymin=-0.5, ymax=MHW, xmin=xllim, xmax=xulim, alpha=0.2, color='blue')
+    plt.annotate('MHW', xy=(-4, MHW-0.12), color='blue', alpha=0.7)
+    ax.axhline(y=maxDH, ls='dotted', color='black')
+    plt.annotate('maxDH', xy=(5, maxDH), xytext=(-4, maxDH-0.12), color='black')

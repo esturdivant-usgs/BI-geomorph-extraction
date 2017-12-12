@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-
-import os
-import arcpy
-
+"""
+Standard values for CoastalVarExtractor.
+They should not need to be changed except to include more site value mappings.
+They do not require any input values. 
+"""
 siteyear = {
     'Cedar2010':{'region': 'Delmarva', 'site': 'Cedar',
                     'year': '2010', 'code': 'cei10',
@@ -40,7 +41,7 @@ siteyear = {
     'FireIsland2014':{'region': 'NewYork', 'site': 'FireIsland',
                     'year': '2014', 'code': 'fi14',
                     'MHW':0.46, 'MLW':-1.01, 'MTL':None},
-    'Fisherman2014':{'region': 'Delmarva', 'site': 'Fisherman',
+    'Fisherman2014':{'region': 'Delmarva', 'site': 'Fisherman', # transects extended manually
                     'year': '2014', 'code': 'fish14',
                     'MHW':0.34, 'MLW':-0.52, 'MTL':None}
     }
@@ -79,11 +80,3 @@ extra_fields = ["StartX", "StartY", "ORIG_FID", "Autogen", "ProcTime",
                 "SHAPE_Leng", "OBJECTID_1", "Shape_Length", "EndX", "EndY",
                 "BaselineID", "OBJECTID", "ORIG_OID", "TRANSORDER_1"]
 extra_fields += [x.upper() for x in extra_fields]
-
-########### Temp file names ##########################
-trans_presort = os.path.join(arcpy.env.scratchGDB, 'trans_presort_temp')
-trans_extended = os.path.join(arcpy.env.scratchGDB, 'trans_ext_temp')
-trans_sort_1 = os.path.join(arcpy.env.scratchGDB, 'trans_sort_temp')
-trans_x = os.path.join(arcpy.env.scratchGDB, 'overlap_points_temp')
-overlapTrans_lines = os.path.join(arcpy.env.scratchGDB, 'overlapTrans_lines_temp')
-sort_lines =  os.path.join(arcpy.env.scratchGDB, 'sort_lines')
