@@ -912,8 +912,10 @@ def measure_Dist2Inlet(shoreline, in_trans, inletLines, tID_fld='sort_ID'):
     df = pd.DataFrame(columns=[tID_fld, 'Dist2Inlet']) # initialize dataframe
     # Get inlets geometry objects
     inlets = [row[0] for row in arcpy.da.SearchCursor(inletLines, ("SHAPE@"))]
-    for row in arcpy.da.SearchCursor(shoreline, ("SHAPE@")): # highest level loop through lines is faster than through transects
+    # Loop through shoreline features
+    for row in arcpy.da.SearchCursor(shoreline, ("SHAPE@")):
         line = row[0]
+        # Loop through transect features
         for [transect, tID] in arcpy.da.SearchCursor(in_trans, ("SHAPE@",  tID_fld)):
             if not line.disjoint(transect): # If shoreline and transect overlap...
                 # 1. cut shoreline at the transect
