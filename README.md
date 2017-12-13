@@ -13,7 +13,7 @@ We recommend that you install this package in the ArcGIS Pro conda environment t
 
 ```bat
 \ArcGIS\Pro\bin\Python\Scripts\proenv
-pip install git+https://github.com/esturdivant-usgs/BI-geomorph-extraction.git
+pip install -e git+https://github.com/esturdivant-usgs/BI-geomorph-extraction.git
 ```
 
 The Jupyter notebook files must be run within the ArcGIS Pro conda environment. To do so, type the following in your command prompt (assuming it has the default set-up and substituting path\to\dir with the location of the repository):
