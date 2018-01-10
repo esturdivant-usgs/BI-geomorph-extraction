@@ -65,3 +65,17 @@ extra_fields = ["StartX", "StartY", "ORIG_FID", "Autogen", "ProcTime",
                 "BaselineID", "OBJECTID", "ORIG_OID", "TRANSORDER_1",
                 'LR2', 'LSE', 'LCI90']
 extra_fields += [x.upper() for x in extra_fields]
+
+sorted_pt_flds = ['SplitSort', 'seg_x', 'seg_y',
+    'Dist_Seg', 'Dist_MHWbay', 'DistSegDH', 'DistSegDL', 'DistSegArm',
+    'ptZ', 'ptSlp', 'ptZmhw',
+    'GeoSet', 'SubType', 'VegDens', 'VegType',
+    'sort_ID','TRANSORDER', 'TRANSECTID', 'DD_ID',
+    'LRR', 'SL_x', 'SL_y', 'Bslope',
+    'DL_x', 'DL_y', 'DL_z', 'DL_zmhw', 'DL_snapX','DL_snapY',
+    'DH_x', 'DH_y', 'DH_z', 'DH_zmhw', 'DH_snapX','DH_snapY',
+    'Arm_x', 'Arm_y', 'Arm_z', 'Arm_zmhw',
+    'DistDH', 'DistDL', 'DistArm',
+    'Dist2Inlet', 'WidthPart', 'WidthLand', 'WidthFull',
+    'uBW', 'uBH', 'ub_feat', 'mean_Zmhw', 'max_Zmhw',
+    'Construction', 'Development', 'Nourishment']

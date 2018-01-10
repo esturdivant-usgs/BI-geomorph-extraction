@@ -64,6 +64,8 @@ arcpy.CheckOutExtension("Spatial") 						# Checkout Spatial Analysis extension
 # VegDens = os.path.join(home, 'FI15_VegDens')
 # GeoSet = os.path.join(home, 'FI15_GeoSet')
 
+# tr_w_anthro = os.path.join(home, 'fiis_trans_wAnthro')
+
 # # Pre-processing outputs
 # extendedTrans = os.path.join(home, 'extTrans')
 # extTrans_tidy = os.path.join(home, 'tidyTrans')
