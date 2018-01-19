@@ -246,13 +246,19 @@ def CopyFCandReplaceValues(fc, oldvalue=-99999, newvalue=None, fields="*", out_f
         print("OUTPUT: {}".format(fc))
     return fc
 
-def ReProject(fc,newfc,proj_code=26918):
+def ReProject(fc, newfc, proj_code=26918, verbose=True):
     # If spatial reference does not match desired, project in correct SR.
+    reprojected = False
     if not arcpy.Describe(fc).spatialReference.factoryCode == proj_code: # NAD83 UTM18N
         arcpy.Project_management(fc,newfc,arcpy.SpatialReference(proj_code))
+        reprojected = True
     else:
         newfc = fc
-    return newfc
+
+    # Print message
+    if verbose and reprojected:
+        print("The projection of {} was changed. The new file is {}.".format(fc, newfc))
+    return(newfc)
 
 def DeleteFeaturesByValue(fc,fields=[], deletevalue=-99999):
     if not len(fields):
@@ -512,13 +518,13 @@ def SetStartValue(trans_sort_1, extendedTrans, tID_fld, start=1):
         print("First value was already {}.".format(start))
     return
 
-def CreateShoreBetweenInlets(shore_delineator, inletLines, out_line, ShorelinePts, proj_code=26918, verbose=True):
+def CreateShoreBetweenInlets(shore_delineator, inletLines, out_line, ShorelinePts, proj_code=26918, SA_bounds='', verbose=True):
     # initialize temp layer names
     split = os.path.join(arcpy.env.scratchGDB, 'shoreline_split')
     # Ready layers for processing
     DeleteExtraFields(inletLines)
     DeleteExtraFields(shore_delineator)
-    shore_delineator = ReProject(shore_delineator,shore_delineator+'_utm',proj_code) # Problems projecting
+    shore_delineator = ReProject(shore_delineator, shore_delineator+'_utm', proj_code) # Problems projecting
     typeFC = arcpy.Describe(shore_delineator).shapeType
     if typeFC == "Point" or typeFC =='Multipoint':
         line_temp = os.path.join(arcpy.env.scratchGDB, 'shoreline_line')
@@ -533,7 +539,10 @@ def CreateShoreBetweenInlets(shore_delineator, inletLines, out_line, ShorelinePt
     if verbose:
         print("Splitting {} at inlets...".format(shore_delineator))
     arcpy.Delete_management(split) # delete if already exists
-    arcpy.FeatureToLine_management([shore_delineator, inletLines], split)
+    if len(SA_bounds) > 0:
+        arcpy.FeatureToLine_management([shore_delineator, inletLines, SA_bounds], split)
+    else:
+        arcpy.FeatureToLine_management([shore_delineator, inletLines], split)
     # Delete any lines that are not intersected by a shoreline point.
     if verbose:
         print("Preserving only those line segments that intersect shoreline points...")
@@ -543,31 +552,31 @@ def CreateShoreBetweenInlets(shore_delineator, inletLines, out_line, ShorelinePt
     dissolve_fld = "FID_{}".format(os.path.basename(shore_delineator))
     arcpy.Dissolve_management(split+'_join', out_line, [[dissolve_fld]], multi_part="SINGLE_PART")
     return out_line
-
-def CreateShoreBetweenInlets_old(shore_delineator,inletLines, out_line, ShorelinePts, proj_code=26918):
-    # initialize temp layer names
-    split_temp = os.path.join(arcpy.env.scratchGDB, 'split_temp')
-    # Ready layers for processing
-    DeleteExtraFields(inletLines)
-    DeleteExtraFields(shore_delineator)
-    shore_delineator = ReProject(shore_delineator,shore_delineator+'_utm',proj_code) # Problems projecting
-    typeFC = arcpy.Describe(shore_delineator).shapeType
-    if typeFC == "Point" or typeFC =='Multipoint':
-        line_temp = os.path.join(arcpy.env.scratchGDB, 'line_temp')
-        shore_temp = os.path.join(arcpy.env.scratchGDB, 'shore_temp')
-        # Create shoreline from shoreline points
-        arcpy.PointsToLine_management(shore_delineator, line_temp)
-        shore_delineator = shore_temp
-        # Merge and then extend shoreline to inlet lines
-        arcpy.Merge_management([line_temp,inletLines],shore_delineator)
-        arcpy.ExtendLine_edit(shore_delineator,'500 Meters')
-    # Eliminate extra lines, e.g. bayside, based on presence of SHLpts
-    arcpy.Delete_management(split_temp) # delete if already exists
-    arcpy.FeatureToLine_management([shore_delineator, inletLines], split_temp)
-    arcpy.SelectLayerByLocation_management("split_temp", "INTERSECT", ShorelinePts,'1 METERS')
-    print('CHECK THIS PROCESS. Added Dissolve operation to CreateShore... and so far it has not been tested.')
-    arcpy.Dissolve_management('split_temp', out_line, [["FID_{}".format(shore_delineator)]])
-    return out_line
+#
+# def CreateShoreBetweenInlets_old(shore_delineator,inletLines, out_line, ShorelinePts, proj_code=26918):
+#     # initialize temp layer names
+#     split_temp = os.path.join(arcpy.env.scratchGDB, 'split_temp')
+#     # Ready layers for processing
+#     DeleteExtraFields(inletLines)
+#     DeleteExtraFields(shore_delineator)
+#     shore_delineator = ReProject(shore_delineator,shore_delineator+'_utm',proj_code) # Problems projecting
+#     typeFC = arcpy.Describe(shore_delineator).shapeType
+#     if typeFC == "Point" or typeFC =='Multipoint':
+#         line_temp = os.path.join(arcpy.env.scratchGDB, 'line_temp')
+#         shore_temp = os.path.join(arcpy.env.scratchGDB, 'shore_temp')
+#         # Create shoreline from shoreline points
+#         arcpy.PointsToLine_management(shore_delineator, line_temp)
+#         shore_delineator = shore_temp
+#         # Merge and then extend shoreline to inlet lines
+#         arcpy.Merge_management([line_temp,inletLines],shore_delineator)
+#         arcpy.ExtendLine_edit(shore_delineator,'500 Meters')
+#     # Eliminate extra lines, e.g. bayside, based on presence of SHLpts
+#     arcpy.Delete_management(split_temp) # delete if already exists
+#     arcpy.FeatureToLine_management([shore_delineator, inletLines], split_temp)
+#     arcpy.SelectLayerByLocation_management("split_temp", "INTERSECT", ShorelinePts,'1 METERS')
+#     print('CHECK THIS PROCESS. Added Dissolve operation to CreateShore... and so far it has not been tested.')
+#     arcpy.Dissolve_management('split_temp', out_line, [["FID_{}".format(shore_delineator)]])
+#     return out_line
 
 def RasterToLandPerimeter(in_raster, out_polygon, threshold, agg_dist='30 METERS', min_area='300 SquareMeters', min_hole_sz='300 SquareMeters', manualadditions=None):
     """ Raster to Polygon: DEM => Reclass => MHW line """
@@ -585,19 +594,23 @@ def RasterToLandPerimeter(in_raster, out_polygon, threshold, agg_dist='30 METERS
         arcpy.AggregatePolygons_cartography(r2p, out_polygon, agg_dist, min_area, min_hole_sz)
     return(out_polygon)
 
-def CombineShorelinePolygons(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly):
+def CombineShorelinePolygons(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly, SA_bounds=''):
     # Use MTL and MHW contour polygons to create full barrier island shoreline polygon; Shoreline at MHW on oceanside and MTL on bayside
     # Inlet lines must intersect the MHW polygon
-    symdiff = os.path.join(arcpy.env.scratchGDB, 'shore_symdiff')
-    split_lyrname = 'shore_split'
+    symdiff = os.path.join(arcpy.env.scratchGDB, 'shore_1symdiff')
+    split_lyrname = 'shore_2split'
     split = os.path.join(arcpy.env.scratchGDB, split_lyrname)
-    union_2 = os.path.join(arcpy.env.scratchGDB, 'shore_union')
+    union_2 = os.path.join(arcpy.env.scratchGDB, 'shore_3union')
 
-    # Create layer (symdiff) of land between MTL and MHW
+    # Create layer (symdiff) of land between MTL and MHW and split by inlets
     arcpy.Delete_management(symdiff) # delete if already exists
     arcpy.SymDiff_analysis(bndMTL, bndMHW, symdiff)
-    arcpy.FeatureToPolygon_management([symdiff, inletLines], split) # Split MTL features at inlets
+    if len(SA_bounds) > 0:
+        arcpy.FeatureToPolygon_management([symdiff, inletLines, SA_bounds], split) # Split MTL features at inlets and study area bounds
+    else:
+        arcpy.FeatureToPolygon_management([symdiff, inletLines], split) # Split MTL features at inlets
 
+    print("Isolating the above-MTL portion of the polygon to the bayside...")
     # Select bayside MHW-MTL area, polygons that don't intersect shoreline points
     with arcpy.da.UpdateCursor(split, ("SHAPE@")) as cursor:
         for prow in cursor:
@@ -606,6 +619,7 @@ def CombineShorelinePolygons(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly):
                 spt = srow[0] # point geometry
                 if not pgeom.disjoint(spt):
                     cursor.deleteRow()
+
     # Merge bayside MHW-MTL with above-MHW polygon
     arcpy.Union_analysis([split, bndMHW], union_2)
     arcpy.Dissolve_management(union_2, bndpoly, multi_part='SINGLE_PART') # Dissolve all features in union_2 to single part polygons
@@ -613,30 +627,30 @@ def CombineShorelinePolygons(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly):
         Recommended technique: select the polygon/s to keep and then Switch Selection.\n'''.format(bndpoly))
     return(bndpoly)
 
-def CombineShorelinePolygons_old2(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly):
-    # Use MTL and MHW contour polygons to create full barrier island shoreline polygon; Shoreline at MHW on oceanside and MTL on bayside
-    # Inlet lines must intersect the MHW polygon
-    symdiff = os.path.join(arcpy.env.scratchGDB, 'symdiff')
-    split_lyrname = 'split_temp'
-    split = os.path.join(arcpy.env.scratchGDB, 'split_temp')
-    union_2 = os.path.join(arcpy.env.scratchGDB, 'union_2_temp')
+# def CombineShorelinePolygons_old2(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly):
+#     # Use MTL and MHW contour polygons to create full barrier island shoreline polygon; Shoreline at MHW on oceanside and MTL on bayside
+#     # Inlet lines must intersect the MHW polygon
+#     symdiff = os.path.join(arcpy.env.scratchGDB, 'symdiff')
+#     split_lyrname = 'split_temp'
+#     split = os.path.join(arcpy.env.scratchGDB, 'split_temp')
+#     union_2 = os.path.join(arcpy.env.scratchGDB, 'union_2_temp')
+#
+#     # Create layer (symdiff) of land between MTL and MHW and split by inlets
+#     arcpy.Delete_management(symdiff) # delete if already exists
+#     arcpy.SymDiff_analysis(bndMTL, bndMHW, symdiff)
+#     arcpy.FeatureToPolygon_management([symdiff, inletLines], split) # Split MTL features at inlets
+#
+#     # Select bayside MHW-MTL area, polygons that don't intersect shoreline points
+#     arcpy.SelectLayerByLocation_management(split_lyrname, "INTERSECT", ShorelinePts, '#', "NEW_SELECTION")
+#     arcpy.SelectLayerByLocation_management(split_lyrname, "#", ShorelinePts, '#', "SWITCH_SELECTION")
+#     # arcpy.FeatureClassToFeatureClass_conversion(split_lyrname, arcpy.env.scratchGDB, 'mtlkeep')
+#     arcpy.Union_analysis([split_lyrname, bndMHW], union_2)
+#     arcpy.Dissolve_management(union_2, bndpoly, multi_part='SINGLE_PART') # Dissolve all features in union_2 to single part polygons
+#     print('''\nUser input required! Select extra features in {} for deletion.\n
+#         Recommended technique: select the polygon/s to keep and then Switch Selection.\n'''.format(bndpoly))
+#     return bndpoly
 
-    # Create layer (symdiff) of land between MTL and MHW
-    arcpy.Delete_management(symdiff) # delete if already exists
-    arcpy.SymDiff_analysis(bndMTL, bndMHW, symdiff)
-    arcpy.FeatureToPolygon_management([symdiff, inletLines], split) # Split MTL features at inlets
-
-    # Select bayside MHW-MTL area, polygons that don't intersect shoreline points
-    arcpy.SelectLayerByLocation_management(split_lyrname, "INTERSECT", ShorelinePts, '#', "NEW_SELECTION")
-    arcpy.SelectLayerByLocation_management(split_lyrname, "#", ShorelinePts, '#', "SWITCH_SELECTION")
-    # arcpy.FeatureClassToFeatureClass_conversion(split_lyrname, arcpy.env.scratchGDB, 'mtlkeep')
-    arcpy.Union_analysis([split_lyrname, bndMHW], union_2)
-    arcpy.Dissolve_management(union_2, bndpoly, multi_part='SINGLE_PART') # Dissolve all features in union_2 to single part polygons
-    print('''\nUser input required! Select extra features in {} for deletion.\n
-        Recommended technique: select the polygon/s to keep and then Switch Selection.\n'''.format(bndpoly))
-    return bndpoly
-
-def DEMtoFullShorelinePoly(elevGrid, MTL, MHW, inletLines, ShorelinePts):
+def DEMtoFullShorelinePoly(elevGrid, MTL, MHW, inletLines, ShorelinePts, SA_bounds=''):
     bndMTL = 'bndpoly_mtl'
     bndMHW = 'bndpoly_mhw'
     bndpoly = 'bndpoly'
@@ -645,8 +659,7 @@ def DEMtoFullShorelinePoly(elevGrid, MTL, MHW, inletLines, ShorelinePts):
     print("Creating the MHW contour polgon from the DEM...")
     RasterToLandPerimeter(elevGrid, bndMHW, MHW)  # Polygon of MHW contour
     print("Combining the two polygons...")
-    bndpoly = CombineShorelinePolygons(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly)
-    # print("User input required! Open the files in ArcGIS, select the polygons that should not be included in the final shoreline polygon, and then delete them. ")
+    bndpoly = CombineShorelinePolygons(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly, SA_bounds)
     #DeleteTempFiles()
     return(bndpoly)
 
@@ -654,13 +667,13 @@ def NewBNDpoly(old_boundary, modifying_feature, new_bndpoly='boundary_poly', ver
     # boundary = input line or polygon of boundary to be modified by newline
     typeFC = arcpy.Describe(old_boundary).shapeType
     if typeFC == "Line" or typeFC =='Polyline':
-        arcpy.FeatureToPolygon_management(old_boundary,new_bndpoly,'1 METER')
+        arcpy.FeatureToPolygon_management(old_boundary, new_bndpoly, '1 METER')
     else:
         if len(os.path.split(new_bndpoly)[0]):
             path = os.path.split(new_bndpoly)[0]
         else:
             path = arcpy.env.workspace
-        arcpy.FeatureClassToFeatureClass_conversion(old_boundary, path, new_bndpoly)
+        arcpy.FeatureClassToFeatureClass_conversion(old_boundary, path, os.path.basename(new_bndpoly))
     typeFC = arcpy.Describe(modifying_feature).shapeType
     if typeFC == "Line" or typeFC == "Polyline":
         arcpy.Densify_edit(modifying_feature, 'DISTANCE', vertexdist)
@@ -751,7 +764,7 @@ def find_similar_fields(prefix, oldPts, fields=[]):
     for key in fdict: # Yes, this loops through keys
         src = key
         if not fieldExists(oldPts, src):
-            print('Looking for field {}'.format(src))
+            print('Looking for field similar to {}{}'.format(prefix, src))
             # identify most similarly named field and replace in dest2src_fields
             fieldlist = arcpy.ListFields(oldPts, src+'*')
             if len(fieldlist) == 1: # if there is only one field that matches src
@@ -802,52 +815,16 @@ def ArmorLineToTrans_PD(in_trans, armorLines, sl2trans_df, tID_fld, proj_code, e
             df = pd.concat([df, rows.loc[rows['bw'] == min(rows['bw']), flds]]) # return the row with the smallest bw
     return(df)
 
-def add_shorelinePts2Trans(in_trans, in_pts, shoreline, tID_fld='sort_ID', proximity=25, verbose=True):
-    #FIXME: save previous cursor (or this one) to dict to reduce iterations https://gis.stackexchange.com/a/30235
-    start = time.clock()
-    if verbose:
-        print("\nJoining shoreline points to transects...")
-    # Find fieldname of slope field
-    fmapdict = find_similar_fields('sl', in_pts, ['slope'])
-    slp_fld = fmapdict['slope']['src']
-    # Make dataframe with SL_x, SL_y, Bslope
-    df = pd.DataFrame(columns=['SL_x', 'SL_y', 'Bslope'], dtype='float64')
-    df.index.name = tID_fld
-    # Iterate through transects
-    for trow in arcpy.da.SearchCursor(in_trans, ("SHAPE@",  tID_fld)):
-        transect = trow[0]
-        tID = trow[1]
-        #!! Get values (slope at nearest SLpt and XY at intersect) for transect geometry
-        newrow = geom_shore2trans(transect, tID, shoreline, in_pts, slp_fld, proximity)
-        df.loc[tID, ['SL_x', 'SL_y', 'Bslope']] = newrow
-        if verbose:
-            if tID % 100 < 1:
-                print('...duration at transect {}: {}'.format(tID, fun.print_duration(start, True)))
-    fun.print_duration(start)
-    return(df)
-
-def geom_dune2trans(transect, tID, in_pts, z_fld, proximity=25):
-    z = x = y = np.nan
-    shortest_dist = float(proximity)
-    for prow in arcpy.da.SearchCursor(in_pts, [z_fld, "SHAPE@X", "SHAPE@Y"]):
-        pt_distance = transect.distanceTo(arcpy.Point(prow[1], prow[2]))
-        if pt_distance < shortest_dist:
-            shortest_dist = pt_distance
-            # z, x, y = prow
-            x = prow[1]
-            y = prow[2]
-            z = prow[0]
-    return(x, y, z)
-
 def geom_shore2trans(transect, tID, shoreline, in_pts, slp_fld, proximity=25):
     #SUMMARY: for input transect geometry, get slope at nearest shoreline point and XY at intersect
-    # 1. Set SL_x and SL_y to point where transect intersects shoreline
+
+    # 1. Set SL_x and SL_y at point where transect intersects shoreline
     slxpt = arcpy.Point(np.nan, np.nan)
     for srow in arcpy.da.SearchCursor(shoreline, ("SHAPE@")):
-        sline = srow[0] # polyline geometry
-        # Set SL_x and SL_y to point where transect intersects shoreline
+        sline = srow[0]
         if not transect.disjoint(sline):
             slxpt = transect.intersect(sline, 1)[0]
+
     # 2. Get the slope value at the closest shoreline point within proximity
     slp = np.nan
     shortest_dist = float(proximity)
@@ -856,28 +833,131 @@ def geom_shore2trans(transect, tID, shoreline, in_pts, slp_fld, proximity=25):
         if pt_distance < shortest_dist:
             shortest_dist = pt_distance
             slp = prow[0]
+
     # Return: X and Y at the intersect of trans and shoreline, slope at nearest shoreline point (within proximity distance)
     return(slxpt.X, slxpt.Y, slp)
 
-def find_ClosestPt2Trans_snap(in_trans, in_pts, trans_df, prefix, tID_fld='sort_ID', proximity=25, verbose=True, fill=-99999):
+def add_shorelinePts2Trans(in_trans, in_pts, shoreline, tID_fld='sort_ID', proximity=25, verbose=True):
+    start = time.clock()
+    if verbose:
+        print("\nMatching shoreline points to transects...")
+
+    # Find fieldname of slope field
+    fmapdict = find_similar_fields('sl', in_pts, ['slope'])
+    slp_fld = fmapdict['slope']['src']
+
+    # Make dataframe with SL_x, SL_y, Bslope
+    df = pd.DataFrame(columns=['SL_x', 'SL_y', 'Bslope'], dtype='float64')
+    df.index.name = tID_fld
+
+    # Iterate through transects
+    for trow in arcpy.da.SearchCursor(in_trans, ("SHAPE@",  tID_fld)):
+        transect = trow[0]
+        tID = trow[1]
+        #!! Get values (slope at nearest SLpt and XY at intersect) for transect geometry
+        newrow = geom_shore2trans(transect, tID, shoreline, in_pts, slp_fld, proximity)
+        df.loc[tID, ['SL_x', 'SL_y', 'Bslope']] = newrow
+
+        if verbose:
+            if tID % 100 < 1:
+                print('...duration at transect {}: {}'.format(tID, fun.print_duration(start, True)))
+
+    fun.print_duration(start)
+    return(df)
+
+def geom_dune2trans(trow, out_df, in_pts, z_fld, prefix, proximity=25):
+    colnames_xyz = [prefix+'_x', prefix+'_y', prefix+'_z']
+    colnames_snapt = [prefix+'_snapX', prefix+'_snapY']
+    # initialize shortest distance threshold and false
+    shortest_dist = float(proximity)
+    found = False
+    # retrieve transect geom, ID value
+    transect = trow[0]
+    tID = trow[1]
+    for prow in arcpy.da.SearchCursor(in_pts, ["SHAPE@X", "SHAPE@Y", z_fld, "OID@"]):
+        in_pt = arcpy.Point(X=prow[0], Y=prow[1], Z=prow[2], ID=prow[3])
+        if transect.distanceTo(in_pt) < shortest_dist:
+            shortest_dist = transect.distanceTo(in_pt)
+            pt = in_pt
+            found = True
+    if found:
+        snappt = transect.snapToLine(arcpy.Point(pt.X, pt.Y))
+        out_df.loc[tID, colnames_snapt] = [snappt[0].X, snappt[0].Y]
+        out_df.loc[tID, colnames_xyz] = [pt.X, pt.Y, pt.Z]
+    return(out_df)
+
+def find_ClosestPt2Trans_snap(in_trans, dh_pts, dl_pts, trans_df, tID_fld='sort_ID', proximity=25, verbose=True, fill=-99999):
+    # 12 minutes for FireIsland
+    start = time.clock()
+    if verbose:
+        print("\nMatching dune points with transects:")
+
+    # Get fieldname for elevation (Z) field
+    if verbose:
+        print('Getting name of DH Z field...')
+    fmapdict = find_similar_fields('DH', dh_pts, fields=['_z'])
+    dhz_fld = fmapdict['_z']['src']
+    dh_pts = ReProject(dh_pts, dh_pts+'_utm', proj_code=arcpy.Describe(in_trans).spatialReference.factoryCode)
+
+    # Get fieldname for elevation (Z) field
+    if verbose:
+        print('Getting name of DL Z field...')
+    fmapdict = find_similar_fields('DL', dl_pts, fields=['_z'])
+    dlz_fld = fmapdict['_z']['src']
+    dl_pts = ReProject(dl_pts, dl_pts+'_utm', proj_code=arcpy.Describe(in_trans).spatialReference.factoryCode)
+
+    # Initialize dataframe
+    colnames =['DH_x', 'DH_y', 'DH_z', 'DH_snapX', 'DH_snapY',
+                'DL_x', 'DL_y', 'DL_z', 'DL_snapX','DL_snapY']
+    out_df = pd.DataFrame(columns=colnames, dtype='f8')
+    out_df.index.name = tID_fld
+
+    # Find nearest point to each transect
+    if verbose:
+        print('Looping through transects and dune points to find nearest point within {} m...'.format(proximity))
+    for trow in arcpy.da.SearchCursor(in_trans, ("SHAPE@", tID_fld)):
+
+        # Dune crests (dhigh)
+        out_df = geom_dune2trans(trow, out_df, dh_pts, dhz_fld, prefix='DH', proximity=proximity)
+        # Dune toes (dlow)
+        out_df = geom_dune2trans(trow, out_df, dl_pts, dlz_fld, prefix='DL', proximity=proximity)
+
+        if verbose:
+            tID = trow[1]
+            if tID % 100 < 1:
+                print('...duration at transect {}: {}'.format(tID, fun.print_duration(start, True)))
+
+    duration = fun.print_duration(start)
+    return(out_df)
+
+def find_ClosestPt2Trans_snap_old(in_trans, in_pts, trans_df, prefix, tID_fld='sort_ID', proximity=25, verbose=True, fill=-99999):
     # About 1 minute per transect
     start = time.clock()
     if verbose:
-        print("\nJoining {} points to transects:".format(prefix))
-    # Get fieldname for Z field
-    if verbose:
-        print('Getting name of Z field...')
+        print("\nMatching {} points with transects:".format(prefix))
+
+    # Get fieldname for elevation (Z) field
     if prefix == 'DH' or prefix == 'DL':
+        if verbose:
+            print('Getting name of Z field...')
         fmapdict = find_similar_fields(prefix, in_pts, fields=['_z'])
-    z_fld = fmapdict['_z']['src']
+        z_fld = fmapdict['_z']['src']
+    else:
+        print("Prefix is not 'DH' or 'DL' and we don't have a contingency for that.")
+    in_pts = ReProject(in_pts, in_pts+'_utm', proj_code=arcpy.Describe(in_trans).spatialReference.factoryCode)
+
     # Initialize dataframe
-    out_df = pd.DataFrame(columns=[prefix+'_x', prefix+'_y', prefix+'_z', prefix+'_snapX', prefix+'_snapY'], dtype='f8')
+    colnames_xyz = [prefix+'_x', prefix+'_y', prefix+'_z']
+    colnames_snapt = [prefix+'_snapX', prefix+'_snapY']
+    out_df = pd.DataFrame(columns=colnames_xyz + colnames_snapt, dtype='f8')
     out_df.index.name = tID_fld
+
     # Find nearest point
     if verbose:
-        print('Looping through transects to find nearest point within {} meters...'.format(proximity))
+        print('Looping through transects and {} points to find nearest point within {} m...'.format(prefix, proximity))
+    # For each transect...
     for row in arcpy.da.SearchCursor(in_trans, ("SHAPE@", tID_fld)):
-        # reset values
+        # initialize shortest distance threshold and false
         shortest_dist = float(proximity)
         found = False
         # retrieve transect geom, ID value
@@ -891,11 +971,13 @@ def find_ClosestPt2Trans_snap(in_trans, in_pts, trans_df, prefix, tID_fld='sort_
                 found = True
         if found:
             snappt = transect.snapToLine(arcpy.Point(pt.X, pt.Y))
-            out_df.loc[tID, [prefix+'_snapX', prefix+'_snapY']] = [snappt[0].X, snappt[0].Y]
-            out_df.loc[tID, [prefix+'_x', prefix+'_y', prefix+'_z']] = [pt.X, pt.Y, pt.Z]
+            out_df.loc[tID, colnames_snapt] = [snappt[0].X, snappt[0].Y]
+            out_df.loc[tID, colnames_xyz] = [pt.X, pt.Y, pt.Z]
         if verbose:
             if tID % 100 < 1:
                 print('Duration at transect {}: {}'.format(tID, fun.print_duration(start, True)))
+                print('Last line of dataframe: {}'.format(out_df.iloc[-1]))
+
     duration = fun.print_duration(start)
     return(out_df)
 
@@ -922,7 +1004,6 @@ def measure_Dist2Inlet(shoreline, in_trans, inletLines, tID_fld='sort_ID'):
                 [rseg, lseg] = line.cut(transect)
                 # 2. if the shoreline segment touches any inlet, get the segment length.
                 # in case of multipart features, use only the first part
-                # What happens when the shoreline and transect intersect in multiple places?
                 lenR = arcpy.Polyline(rseg.getPart(0), utmSR).length if not all(rseg.disjoint(i) for i in inlets) else np.nan
                 lenL = arcpy.Polyline(lseg.getPart(0), utmSR).length if not all(lseg.disjoint(i) for i in inlets) else np.nan
                 # 3. Return the length of the shorter segment and save it in the DF
@@ -943,44 +1024,41 @@ def measure_Dist2Inlet(shoreline, in_trans, inletLines, tID_fld='sort_ID'):
 Beach width
 """
 def calc_BeachWidth_fill(in_trans, trans_df, maxDH, tID_fld='sort_ID', MHW='', fill=-99999):
-    # v3 (v1: arcpy, v2: pandas, v3: pandas with snapToLine() from arcpy)
-    # To find dlow proxy, uses code written by Ben in Matlab and converted to pandas by Emily
-    # Adds snapToLine() polyline geometry method from arcpy
+    # To find dlow proxy, use code written by Ben in Matlab and converted to pandas by Emily
+    # Uses snapToLine() polyline geometry method from arcpy
 
-    # replace nan's with fill for cursor operations;
-    #FIXME: may actually be necessary to work with nans... performing calculations with fill results in inaccuracies
+    # Replace nan's with fill for cursor operations;
     if trans_df.isnull().values.any():
         nan_input = True
         trans_df.fillna(fill, inplace=True)
     else:
         nan_input = False
-    # add (or recalculate) elevation fields adjusted to MHW
+
+    # Add (or recalculate) elevation fields adjusted to MHW
     trans_df = fun.adjust2mhw(trans_df, MHW, ['DH_z', 'DL_z', 'Arm_z'], fill)
-    # initialize df
+
+    # Initialize beach width dataframe
     bw_df = pd.DataFrame(fill, index=trans_df.index, columns= ['DistDL', 'DistDH', 'DistArm', 'uBW', 'uBH', 'ub_feat'], dtype='f8')
     # field ub_feat gets converted to object type when the value is set
-    dl2trans = pd.DataFrame(fill, index=trans_df.index, columns= [tID_fld, 'x', 'y'], dtype='f8')
-    dh2trans = pd.DataFrame(fill, index=trans_df.index, columns= [tID_fld, 'x', 'y'], dtype='f8')
-    arm2trans = pd.DataFrame(fill, index=trans_df.index, columns= [tID_fld, 'x', 'y'], dtype='f8')
+
     for row in arcpy.da.SearchCursor(in_trans, ("SHAPE@",  tID_fld)):
         transect = row[0]
         tID = row[1]
         tran = trans_df.loc[tID]
         try:
             if int(tran['SL_x']) != int(fill):
+
                 # Calculate Dist_ values in bw_df columns. Use snapToLine method.
                 if int(tran.DL_x) != int(fill):
                     ptDL = transect.snapToLine(arcpy.Point(tran['DL_x'], tran['DL_y']))
                     bw_df.loc[tID, 'DistDL'] = np.hypot(tran['SL_x']- ptDL[0].X, tran['SL_y'] - ptDL[0].Y)
-                    dl2trans.loc[tID, ['x', 'y']] = [ptDL[0].X, ptDL[0].Y]
                 if int(tran.DH_x) != int(fill):
                     ptDH = transect.snapToLine(arcpy.Point(tran['DH_x'], tran['DH_y']))
                     bw_df.loc[tID, 'DistDH'] = np.hypot(tran['SL_x'] - ptDH[0].X, tran['SL_y'] - ptDH[0].Y)
-                    dh2trans.loc[tID, ['x', 'y']] = [ptDH[0].X, ptDH[0].Y]
                 if int(tran.Arm_x) != int(fill):
                     ptArm = transect.snapToLine(arcpy.Point(tran['Arm_x'], tran['Arm_y']))
                     bw_df.loc[tID, 'DistArm'] = np.hypot(tran['SL_x'] - ptArm[0].X, tran['SL_y'] - ptArm[0].Y)
-                    arm2trans.loc[tID, ['x', 'y']] = [ptArm[0].X, ptArm[0].Y]
+
                 # Select Dist value for uBW. Use DistDL if available. If not and DH < maxDH, use DistDH. If neither available, use DistArm.
                 if int(tran.DL_x) != int(fill):
                     bw_df.loc[tID, 'uBW'] = bw_df['DistDL'].loc[tID]
@@ -996,17 +1074,19 @@ def calc_BeachWidth_fill(in_trans, trans_df, maxDH, tID_fld='sort_ID', MHW='', f
                     bw_df.loc[tID, 'ub_feat'] = 'Arm'
                 else:
                     continue
+
             else:
                 continue
         except TypeError:
             print(tran.DL_x)
             print(fill)
             break
+            
     # Add new uBW and uBH fields to trans_df
     trans_df = fun.join_columns_id_check(trans_df, bw_df, tID_fld)
     if nan_input: # restore nan values
         trans_df.replace(fill, np.nan, inplace=True)
-    return(trans_df, dl2trans, dh2trans, arm2trans)
+    return(trans_df)
 
 """
 Widths

@@ -12,41 +12,33 @@ from CoastalVarExtractor.configmap import *
 import CoastalVarExtractor.functions_warcpy as fwa
 
 ############ Inputs #########################
-site = 'Fisherman'
-year = '2014'
-proj_dir = r'\\Mac\stor\Projects\TransectExtraction\{}'.format(site+year)
+# site = 'Fisherman'
+# year = '2014'
+# proj_dir = r'\\Mac\stor\Projects\TransectExtraction\{}'.format(sitei+yeari)
 
 try:
     sitei = input("site: ")
     yeari = input("year: ")
     input_possible = True
-except:
-    input_possible = False
-
-if input_possible:
+    proj_dir = r'\\Mac\stor\Projects\TransectExtraction\{}'.format(sitei+yeari)
     if not os.path.isdir(proj_dir):
         proj_dir = input("Path to project directory (e.g. \\\Mac\stor\Projects\TransectExtraction\FireIsland2014): ")
     if not os.path.isdir(proj_dir):
         sys.exit("'{}' not recognized as folder. Operation cancelled so you can get the project folder squared away.".format(proj_dir))
     site = sitei
     year = yeari
-else: # if not possible to prompt user for input
-    proj_dir = ""
-    site = ""
-    year = ""
+except:
+    input_possible = False
     if len(proj_dir) < 1:
         print("Looks like we can't prompt for user input so you'll need to manually enter values into the module.")
         raise
 
-# proj_dir = r"\\Mac\stor\Projects\TransectExtraction\Fisherman2014"
-# site = "Fisherman"
-# year = "2014"
-
-SiteYear_strings = siteyear[site+year] # get siteyear dict from configmap
-home = os.path.join(proj_dir, '{site}{year}.gdb'.format(**SiteYear_strings))
+sitevals = sitemap[site]
+yabbr = str(year)[2:4]
+home = os.path.join(proj_dir, '{}{}.gdb'.format(sitevals['site'], year))
 
 ######## Set-up project folder ################################################
-# home = os.path.join(proj_dir, '{site}{year}.gdb'.format(**SiteYear_strings))
+# home = os.path.join(proj_dir, '{site}{year}.gdb'.format(**sitevals))
 scratch_dir = os.path.join(proj_dir, 'scratch')
 final_dir = os.path.join(proj_dir, 'Extracted_Data')
 arcpy.env.workspace = home
@@ -58,27 +50,38 @@ if not os.path.exists(scratch_dir):
 arcpy.env.overwriteOutput = True 						# Overwrite output?
 arcpy.CheckOutExtension("Spatial") 						# Checkout Spatial Analysis extension
 
-########### Input files ##########################
-orig_trans = os.path.join(home, 'DelmarvaS_SVA_LT')
-inletLines = os.path.join(home, 'inletLines')
-ShorelinePts = os.path.join(home, 'SLpts')
-dlPts = os.path.join(home, 'DLpts')
-dhPts = os.path.join(home, 'DHpts')
-armorLines = os.path.join(home, 'armorLines')
-elevGrid = os.path.join(home, 'DEM')
-elevGrid_5m = os.path.join(home, 'DEM_5m')
+########### Input file names ##########################
+# orig_trans = os.path.join(home, 'DelmarvaS_SVA_LT')
+# inletLines = os.path.join(home, 'inletLines')
+# ShorelinePts = os.path.join(home, 'SLpts')
+# dlPts = os.path.join(home, 'DLpts')
+# dhPts = os.path.join(home, 'DHpts')
+# armorLines = os.path.join(home, 'armorLines')
+# elevGrid = os.path.join(home, 'DEM')
 
-extendedTrans = os.path.join(home, 'extTrans')
-extTrans_tidy = os.path.join(home, 'tidyTrans')
-if input_possible:
-    orig_trans = fwa.SetInputFCname(orig_trans, 'original NASC transects', system_ext=True)
-    ShorelinePts = fwa.SetInputFCname(ShorelinePts, 'shoreline points', system_ext=True)
-    dhPts = fwa.SetInputFCname(dhPts, 'dune crest (dhigh) points', system_ext=True)
-    dlPts = fwa.SetInputFCname(dhPts, 'dune toe (dlow) points', system_ext=True)
-    elevGrid = fwa.SetInputFCname(elevGrid, 'DEM', system_ext=True)
+# SubType = os.path.join(home, 'FI15_SubType')
+# VegType = os.path.join(home, 'FI15_VegType')
+# VegDens = os.path.join(home, 'FI15_VegDens')
+# GeoSet = os.path.join(home, 'FI15_GeoSet')
 
-######## Set paths ###########################################################
-if SiteYear_strings['region'] == 'Massachusetts' or SiteYear_strings['region'] == 'RhodeIsland' or SiteYear_strings['region'] == 'Maine':
+# tr_w_anthro = os.path.join(home, 'fiis_trans_wAnthro')
+
+# # Pre-processing outputs
+# extendedTrans = os.path.join(home, 'extTrans')
+# extTrans_tidy = os.path.join(home, 'tidyTrans')
+# elevGrid_5m = os.path.join(home, 'DEM_5m')
+# barrierBoundary = os.path.join(home, 'bndpoly_2sl')   # Barrier Boundary polygon; create with TE_createBoundaryPolygon.py
+# shoreline = os.path.join(home, 'ShoreBetweenInlets')
+
+# if input_possible:
+#     orig_trans = fwa.SetInputFCname(orig_trans, 'original NASC transects', system_ext=True)
+#     ShorelinePts = fwa.SetInputFCname(ShorelinePts, 'shoreline points', system_ext=True)
+#     dhPts = fwa.SetInputFCname(dhPts, 'dune crest (dhigh) points', system_ext=True)
+#     dlPts = fwa.SetInputFCname(dhPts, 'dune toe (dlow) points', system_ext=True)
+#     elevGrid = fwa.SetInputFCname(elevGrid, 'DEM', system_ext=True)
+
+########### Default Values ##########################
+if sitevals['region'] == 'Massachusetts' or sitevals['region'] == 'RhodeIsland' or sitevals['region'] == 'Maine':
     proj_code = 26919 # "NAD 1983 UTM Zone 19N"
 else:
     proj_code = 26918 # "NAD 1983 UTM Zone 18N"
@@ -86,49 +89,53 @@ else:
 nad83 = arcpy.SpatialReference(4269)
 utmSR = arcpy.SpatialReference(proj_code)
 
-########### Default Values ##########################
-if SiteYear_strings['site'] == 'Monomoy':
+if sitevals['site'] == 'Monomoy':
     maxDH = 3
 else:
     maxDH = 2.5
 
-MHW = SiteYear_strings['MHW']
-MLW = SiteYear_strings['MLW']
+MHW = sitevals['MHW']
+MLW = sitevals['MLW']
 dMHW = -MHW                         # Beach height adjustment
 oMLW = MHW-MLW                      # MLW offset from MHW # Beach height adjustment (relative to MHW)
-SiteYear_strings['MTL'] = MTL = (MHW+MLW)/2
+sitevals['MTL'] = MTL = (MHW+MLW)/2
 
-############## Outputs ###############################
-barrierBoundary = os.path.join(home, 'bndpoly_2sl'.format(**SiteYear_strings))   # Barrier Boundary polygon; create with TE_createBoundaryPolygon.py
-dh2trans = '{site}{year}_DH2trans'.format(**SiteYear_strings)             # DHigh within 25 m
-dl2trans = '{site}{year}_DL2trans'.format(**SiteYear_strings)             # DLow within 25 m
-arm2trans = '{site}{year}_arm2trans'.format(**SiteYear_strings)           # XYZ position of armoring along transect
-shl2trans = '{site}{year}_SHL2trans'.format(**SiteYear_strings)           # beach slope from lidar within 10m of transect
-shoreline = os.path.join(home, 'ShoreBetweenInlets'.format(**SiteYear_strings))  # Complete shoreline ready to become route in Pt. 2
-elevGrid_5m = elevGrid+'_5m'                                              # Elevation resampled to 5 m grids
-slopeGrid = '{site}{year}_slope_5m'.format(**SiteYear_strings)            # Slope in 5 m grids
+############## Output filenames/paths ###############################
+if not 'elevGrid_5m' in locals() and 'elevGrid' in locals():
+    elevGrid_5m = elevGrid+'_5m'                                              # Elevation resampled to 5 m grids
+slopeGrid = 'slope_5m'          # Slope in 5 m grids
 
+# INTERMEDIATE OUTPUTS
+# Geomorphic features
+dh2trans = 'DH2trans'             # DHigh within 25 m
+dl2trans = 'DL2trans'             # DLow within 25 m
+arm2trans = 'arm2trans'           # XYZ position of armoring along transect
+# shl2trans = 'SHL2trans'           # beach slope from lidar within 10m of transect
 # Transects
-tidy_clipped = "tidyTrans_clipped".format(**SiteYear_strings)
-extTrans_fill = '{site}{year}_extTrans_fill'.format(**SiteYear_strings)
-extTrans_null = '{site}{year}_extTrans_null'.format(**SiteYear_strings)
-extTrans_shp = '{site}{year}_extTrans_shp'.format(**SiteYear_strings)
-
+tidy_clipped = "tidyTrans_clipped"
 # Points
-transPts_presort = os.path.join(arcpy.env.scratchGDB, 'tran5mPts_unsorted'.format(**SiteYear_strings))
-transPts = 'transPts_working'.format(**SiteYear_strings) 	# Outputs Transect Segment points
-transPts_null = '{site}{year}_transPts_null'.format(**SiteYear_strings)
-transPts_fill= '{site}{year}_transPts_fill'.format(**SiteYear_strings)
-transPts_shp = '{site}{year}_transPts_shp'.format(**SiteYear_strings)
+transPts_presort = os.path.join(arcpy.env.scratchGDB, 'tran5mPts_unsorted')
+transPts = 'transPts_working'
 pts_elevslope = 'transPts_ZmhwSlp'
 
+# FINAL OUTPUTS
+# transects
+extTrans_fill = '{}{}_extTrans_fill'.format(sitevals['site'], year)
+extTrans_null = '{}{}_extTrans_null'.format(sitevals['site'], year)
+extTrans_shp = '{}{}_extTrans_shp'.format(sitevals['site'], year)
+
+# points
+transPts_null = '{}{}_transPts_null'.format(sitevals['site'], year)
+transPts_fill= '{}{}_transPts_fill'.format(sitevals['site'], year)
+transPts_shp = '{}{}_transPts_shp'.format(sitevals['site'], year)
+
 # Rasters
-rst_transID = "{site}_rstTransID".format(**SiteYear_strings)
+rst_transID = "{}_rstTransID".format(sitevals['site'])
 rst_transIDpath = os.path.join(home, rst_transID)
-rst_transPopulated = "{site}{year}_rstTrans_populated".format(**SiteYear_strings)
-rst_transgrid_path = os.path.join(scratch_dir, "{code}_trans".format(**SiteYear_strings))
-rst_bwgrid_path = os.path.join(home, "{code}".format(**SiteYear_strings))
-bw_rst="{code}_ubw".format(**SiteYear_strings)
+rst_transPopulated = "{}{}_rstTrans_populated".format(sitevals['site'], year)
+rst_transgrid_path = os.path.join(scratch_dir, "{}{}_trans".format(sitevals['code'], yabbr))
+rst_bwgrid_path = os.path.join(home, "{}{}".format(sitevals['code'], yabbr))
+bw_rst="{}{}_ubw".format(sitevals['code'], yabbr)
 
 ########### Temp file names ##########################
 trans_presort = os.path.join(arcpy.env.scratchGDB, 'trans_presort_temp')
@@ -137,17 +144,6 @@ trans_sort_1 = os.path.join(arcpy.env.scratchGDB, 'trans_sort_temp')
 trans_x = os.path.join(arcpy.env.scratchGDB, 'overlap_points_temp')
 overlapTrans_lines = os.path.join(arcpy.env.scratchGDB, 'overlapTrans_lines_temp')
 sort_lines =  os.path.join(arcpy.env.scratchGDB, 'sort_lines')
-
-########### Input/output file names ##########################
-extendedTrans = os.path.join(home, 'extTrans')
-extTrans_tidy = os.path.join(home, 'tidyTrans')
-inletLines = os.path.join(home, 'inletLines')
-ShorelinePts = os.path.join(home, 'SLpts')
-dlPts = os.path.join(home, 'DLpts')
-dhPts = os.path.join(home, 'DHpts')
-armorLines = os.path.join(home, 'armorLines')
-elevGrid = os.path.join(home, 'DEM')
-elevGrid_5m = os.path.join(home, 'DEM_5m')
 
 if not __name__ == '__main__':
     print("setvars.py initialized variables.")
