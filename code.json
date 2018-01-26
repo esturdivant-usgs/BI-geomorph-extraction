@@ -5,7 +5,6 @@
     "description": "Extracts barrier island metrics along transects for Barrier Island Geomorphology Bayesian Network",
     "version": "v0.0.0",
     "status": "Ideation",
-    "dowloadURL": "https://github.com/esturdivant-usgs/BI-geomorph-extraction/master.zip"
 
     "permissions": {
       "usageType": "openSource",
