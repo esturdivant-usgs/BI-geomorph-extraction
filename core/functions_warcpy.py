@@ -14,7 +14,7 @@ import numpy as np
 from operator import add
 import sys
 import arcpy
-import CoastalVarExtractor.functions as fun
+import core.functions as fun
 
 """
 # General use functions
@@ -1081,7 +1081,7 @@ def calc_BeachWidth_fill(in_trans, trans_df, maxDH, tID_fld='sort_ID', MHW='', f
             print(tran.DL_x)
             print(fill)
             break
-            
+
     # Add new uBW and uBH fields to trans_df
     trans_df = fun.join_columns_id_check(trans_df, bw_df, tID_fld)
     if nan_input: # restore nan values

@@ -8,8 +8,8 @@ Designed to be imported by either prepper.ipynb or extractor.py.
 import os
 import sys
 import arcpy
-from CoastalVarExtractor.configmap import *
-import CoastalVarExtractor.functions_warcpy as fwa
+from core.configmap import *
+import core.functions_warcpy as fwa
 
 ############ Inputs #########################
 # site = 'Fisherman'
