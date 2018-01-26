@@ -1,9 +1,7 @@
 # BI-geomorph-extraction
 Author: Emily Sturdivant; esturdivant@usgs.gov
 
-This repository contains a python package (CoastalVarExtractor) to calculate coastal geomorphology variables along shore-normal transects. It is used to produce inputs for modeling geomorphology using a Bayesian Network and is a companion to a Methods Open-File Report (Zeigler and others, 2018) and various ScienceBase data releases that have been or will be published (e.g. Gutierrez and others, 2018). The repo also includes a 'notebooks' folder, which document the implementation instances of the code that produced the published datasets. 
-
-The Methods OFR is titled "Evaluating barrier island characteristics and piping plover (Charadrius melodus) habitat availability along the U.S. Atlantic coast - geospatial approaches and methodology."
+This package is used to calculate coastal geomorphology variables along shore-normal transects. It was designed to produce inputs for modeling geomorphology using a Bayesian Network and is a companion to a Methods Open-File Report titled "Evaluating barrier island characteristics and piping plover (Charadrius melodus) habitat availability along the U.S. Atlantic coast - geospatial approaches and methodology" (Zeigler and others, 2018) and various ScienceBase data releases that have been or will be published (e.g. Gutierrez and others, 2018). This repository includes a 'notebooks' folder, which document the implementation instances of the code that produced the published datasets. 
 
 ## Requires
 ArcGIS Pro, which includes an installation of Anaconda and Python 3.
@@ -35,7 +33,7 @@ jupyter notebook
     
 2. Review values (mostly file paths) in setvars.py and update if needed.
 
-3. Interactively run prepper.ipynb from the ArcGIS Pro to make some of the input files. There are steps in the process that must be completed manually. Notes in the script describe the procedure for creating them. 
+3. Interactively run prepper.ipynb from the ArcGIS Pro to make some those input files that require creation or modification. There are steps in the process that must be completed manually. Notes in the script describe the procedure for creating them. 
     - inlet lines <- DEM + **manual**
     - armoring lines <- ortho + **manual**
     - boundary polygon <- DEM + shoreline points + inlet lines (+ manual)
