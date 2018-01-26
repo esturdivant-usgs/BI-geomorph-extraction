@@ -1,0 +1,43 @@
+[
+  {
+    "name": "Barrier Island Geomorphology Extraction",
+    "organization": "U.S. Geological Survey",
+    "description": "Extracts barrier island metrics along transects for Barrier Island Geomorphology Bayesian Network",
+    "version": "v0.0.0",
+    "status": "Ideation",
+    "dowloadURL": "https://github.com/esturdivant-usgs/BI-geomorph-extraction/master.zip"
+
+    "permissions": {
+      "usageType": "openSource",
+      "license": "https://github.com/esturdivant-usgs/BI-geomorph-extraction/blob/master/LICENSE"
+    },
+
+    "homepageURL": "",
+    "dowloadURL": "https://github.com/esturdivant-usgs/BI-geomorph-extraction/master.zip",
+    "disclaimerURL": "https://github.com/esturdivant-usgs/BI-geomorph-extraction/LICENSE.md",
+    "repositoryUrl": "https://github.com/esturdivant-usgs/BI-geomorph-extraction.git",
+    "vcs": "git",
+
+    "laborHours": null,
+
+    "tags": [
+      "coasts",
+      "geomorphology",
+      "transects"
+    ],
+
+    "languages": [
+      "Python",
+      "Jupyter Notebook"
+    ],
+
+    "contact": {
+      "name": "Emily Sturdivant",
+      "email": "esturdivant@usgs.gov"
+    },
+
+    "date": {
+      "metadataLastUpdated": "2018-01-26"
+    }
+  }
+]
