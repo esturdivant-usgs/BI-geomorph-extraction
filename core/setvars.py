@@ -20,6 +20,7 @@ try:
     sitei = input("site: ")
     yeari = input("year: ")
     input_possible = True
+    proj_dir = r'\\IGSAGIEGGS-CSGG\Thieler_Group\Commons_DeepDive\DeepDive\NewYork\Breezy\{}'.format(sitei+yeari)
     proj_dir = r'\\Mac\stor\Projects\TransectExtraction\{}'.format(sitei+yeari)
     if not os.path.isdir(proj_dir):
         proj_dir = input("Path to project directory (e.g. \\\Mac\stor\Projects\TransectExtraction\FireIsland2014): ")

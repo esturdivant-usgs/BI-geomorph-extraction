@@ -34,11 +34,11 @@ sitemap = {
                     'MHW':0.43, 'MLW':-0.61,
                     'id_init_val':30000},
     'FireIsland':{'region': 'NewYork', 'site': 'FireIsland',
-                    'code': 'fi',
+                    'code': 'fiis',
                     'MHW':0.46, 'MLW':-1.01,
                     'id_init_val':10000},
     'BreezyPt':{'region': 'NewYork', 'site': 'BreezyPt', # transects extended manually
-                    'code': 'bp',
+                    'code': 'rock',
                     'MHW':0.46, 'MLW':None, # Get MLW value from VDatum...
                     'id_init_val':20000}
     }
