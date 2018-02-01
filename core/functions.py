@@ -137,9 +137,9 @@ def calc_trans_distances(df, MHW=''):
     return(df)
 
 def calc_pt_distances(df):
-    df2 = pd.DataFrame({'DistSegDH': np.hypot(df.seg_x - df.DH_x, df.seg_y - df.DH_y),
-                        'DistSegDL': np.hypot(df.seg_x - df.DL_x, df.seg_y - df.DL_y),
-                        'DistSegArm': np.hypot(df.seg_x - df.Arm_x, df.seg_y - df.Arm_y),
+    df2 = pd.DataFrame({'DistSegDH': df.Dist_Seg - df.DistDH,
+                        'DistSegDL': df.Dist_Seg - df.DistDL,
+                        'DistSegArm': df.Dist_Seg - df.DistArm,
                         'Dist_MHWbay': df.WidthPart - df.Dist_Seg
                         }, index=df.index)
     df = join_columns(df, df2)
@@ -156,8 +156,8 @@ def prep_points(df, tID_fld, pID_fld, MHW, fill=-99999, old2newflds={}):
     df = sort_pts(df, tID_fld, pID_fld)
     # Calculate pt distance from dunes and bayside shore
     # df = adjust2mhw(df, MHW)
-    df = calc_pt_distances(df)
     df = calc_trans_distances(df)
+    df = calc_pt_distances(df)
     return(df)
 
 def aggregate_z(df, MHW, id_fld, zfld, fill):
