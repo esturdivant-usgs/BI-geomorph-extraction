@@ -36,7 +36,7 @@ def SetInputFCname(inFCname, varname='', system_ext=True):
         if FCname:
             inFCname = os.path.basename(FCname)
         else:
-            print('No data selected for {}.'.format(inFCname))
+            print('No data selected for {}.'.format(os.path.basename(inFCname)))
             inFCname = False
             if system_ext:
                 raise SystemExit
@@ -76,11 +76,11 @@ def fieldsAbsent(in_fc, fieldnames):
         if not fn.lower() in fnamelist:
             mfields.append(fn)
     if not len(mfields):
-        print("All expected fields present in file '{}'.".format(in_fc))
+        print("All expected fields present in file '{}'.".format(os.path.basename(in_fc)))
         return False
     else:
         print("Fields '{}' not present in transects file '{}'.".format(
-              mfields, in_fc))
+              mfields, os.path.basename(in_fc)))
         return mfields
 
 def fieldExists(in_fc, fieldname):
@@ -114,7 +114,7 @@ def AddNewFields(fc,fieldlist,fieldtype="DOUBLE", verbose=True):
         if not fieldExists(fc, newfname):
             arcpy.AddField_management(fc, newfname, fieldtype)
             if verbose:
-                print('Added {} field to {}'.format(newfname, fc))
+                print('Added {} field to {}'.format(newfname, os.path.basename(fc)))
         return fc
     # Execute for multiple fields
     if type(fieldlist) is str:
@@ -222,7 +222,7 @@ def CopyFCandReplaceValues(fc, oldvalue=-99999, newvalue=None, fields="*", out_f
         fc = out_fc
     fc = ReplaceValueInFC(fc, oldvalue, newvalue, fields)
     if verbose:
-        print("OUTPUT: {}".format(fc))
+        print("OUTPUT: {}".format(os.path.basename(fc)))
     return fc
 
 def ReProject(fc, newfc, proj_code=26918, verbose=True):
@@ -236,7 +236,7 @@ def ReProject(fc, newfc, proj_code=26918, verbose=True):
 
     # Print message
     if verbose and reprojected:
-        print("The projection of {} was changed. The new file is {}.".format(fc, newfc))
+        print("The projection of {} was changed. The new file is {}.".format(os.path.basename(fc), os.path.basename(newfc)))
     return(newfc)
 
 def DeleteFeaturesByValue(fc,fields=[], deletevalue=-99999):
@@ -296,11 +296,11 @@ def ExtendLine(fc, new_fc, distance, proj_code=26918, verbose=True):
     if len(os.path.split(new_fc)) > 1:
         fcpath, fcbase = os.path.split(new_fc)
     if not arcpy.Describe(fc).spatialReference.factoryCode == proj_code:
-        print('Projecting {} to UTM'.format(fc))
+        print('Projecting {} to UTM'.format(os.path.basename(fc)))
         arcpy.Project_management(fc, fc+'utm_temp', arcpy.SpatialReference(proj_code))  # project to PCS
         arcpy.FeatureClassToFeatureClass_conversion(fc+'utm_temp', fcpath, fcbase)
     else:
-        print('{} is already projected in UTM.'.format(fc))
+        print('{} is already projected in UTM.'.format(os.path.basename(fc)))
         arcpy.FeatureClassToFeatureClass_conversion(fc, fcpath, fcbase)
     #OID is needed to determine how to break up flat list of data by feature.
     coordinates = [[row[0], row[1]] for row in
@@ -401,7 +401,7 @@ def SortTransectsFromSortLines(in_trans, out_trans, sort_lines=[], tID_fld='sort
         out_trans = arcpy.Sort_management(in_trans, out_trans, [['Shape', 'ASCENDING']], sort_corner) # Sort from lower lef
     else:
         if verbose:
-            print("Creating new feature class {} to hold sorted transects...".format(out_trans))
+            print("Creating new feature class {} to hold sorted transects...".format(os.path.basename(out_trans)))
         out_trans = arcpy.CreateFeatureclass_management(arcpy.env.workspace, os.path.basename(out_trans), "POLYLINE", in_trans, spatial_reference=in_trans)
         dsc = arcpy.Describe(in_trans)
         fieldnames = [field.name for field in dsc.fields if not field.name == dsc.OIDFieldName] + ['SHAPE@']
@@ -518,7 +518,7 @@ def CreateShoreBetweenInlets(shore_delineator, inletLines, out_line, ShorelinePt
         arcpy.ExtendLine_edit(shore_delineator,'500 Meters')
     # Eliminate extra lines, e.g. bayside, based on presence of SHLpts
     if verbose:
-        print("Splitting {} at inlets...".format(shore_delineator))
+        print("Splitting {} at inlets...".format(os.path.basename(shore_delineator)))
     arcpy.Delete_management(split) # delete if already exists
     if len(SA_bounds) > 0:
         arcpy.FeatureToLine_management([shore_delineator, inletLines, SA_bounds], split)
@@ -529,7 +529,7 @@ def CreateShoreBetweenInlets(shore_delineator, inletLines, out_line, ShorelinePt
         print("Preserving only those line segments that intersect shoreline points...")
     arcpy.SpatialJoin_analysis(split, ShorelinePts, split+'_join', "#","KEEP_COMMON", match_option="COMPLETELY_CONTAINS")
     if verbose:
-        print("Dissolving the line to create {}...".format(out_line))
+        print("Dissolving the line to create {}...".format(os.path.basename(out_line)))
     dissolve_fld = "FID_{}".format(os.path.basename(shore_delineator))
     arcpy.Dissolve_management(split+'_join', out_line, [[dissolve_fld]], multi_part="SINGLE_PART")
     return out_line
@@ -605,7 +605,7 @@ def CombineShorelinePolygons(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly, 
     arcpy.Union_analysis([split, bndMHW], union_2)
     arcpy.Dissolve_management(union_2, bndpoly, multi_part='SINGLE_PART') # Dissolve all features in union_2 to single part polygons
     print('''\nUser input required! Select extra features in {} for deletion.\n
-        Recommended technique: select the polygon/s to keep and then Switch Selection.\n'''.format(bndpoly))
+        Recommended technique: select the polygon/s to keep and then Switch Selection.\n'''.format(os.path.basename(bndpoly)))
     return(bndpoly)
 
 # def CombineShorelinePolygons_old2(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly):
@@ -666,7 +666,7 @@ def NewBNDpoly(old_boundary, modifying_feature, new_bndpoly='boundary_poly', ver
     #arcpy.Densify_edit(modifying_feature,'DISTANCE',vertexdist)
     arcpy.Snap_edit(new_bndpoly,[[modifying_feature, 'VERTEX',snapdist]]) # Takes a while
     if verbose:
-        print("Created: {}".format(new_bndpoly))
+        print("Created: {} ... Should be in your home geodatabase.".format(os.path.basename(new_bndpoly)))
     return new_bndpoly # string name of new polygon
 
 def JoinFields(targetfc, sourcefile, dest2src_fields, joinfields=['sort_ID']):
@@ -678,7 +678,7 @@ def JoinFields(targetfc, sourcefile, dest2src_fields, joinfields=['sort_ID']):
         for new in joinlist:
             dest2src_fields[new] = new
     # Prepare target and source FCs: remove new field if it exists and find name of src field
-    print('Deleting any fields in {} with the name of fields to be joined ({}).'.format(targetfc, dest2src_fields.keys()))
+    print('Deleting any fields in {} with the name of fields to be joined ({}).'.format(os.path.basename(targetfc), dest2src_fields.keys()))
     for (dest, src) in dest2src_fields.items():
         # Remove dest field from FC if it already exists
         try: #if fieldExists(targetfc, dest):
@@ -699,10 +699,10 @@ def JoinFields(targetfc, sourcefile, dest2src_fields, joinfields=['sort_ID']):
                         dest2src_fields[dest] = f.name
                         found = True
         if not found:
-            raise AttributeError("Field similar to {} was not found in {}.".format(src, sourcefile))
+            raise AttributeError("Field similar to {} was not found in {}.".format(src, os.path.basename(sourcefile)))
     # Add [src] fields from sourcefile to targetFC
     src_fnames = dest2src_fields.values()
-    print('Joining fields from {} to {}: {}'.format(sourcefile, targetfc, src_fnames))
+    print('Joining fields from {} to {}: {}'.format(os.path.basename(sourcefil), os.path.basename(targetfc), src_fnames))
     if len(joinfields)==1:
         try:
             arcpy.JoinField_management(targetfc, joinfields, sourcefile, joinfields, src_fnames)
@@ -764,7 +764,7 @@ def find_similar_fields(prefix, oldPts, fields=[]):
                             src = f.name
                 else:
                     # raise AttributeError("Field similar to {} was not found in {}.".format(src, oldPts))
-                    print("Field similar to {} was not found in {}.".format(src, oldPts))
+                    print("Field similar to {} was not found in {}.".format(src, os.path.basename(oldPts)))
                     # pass
         fdict[key]['src'] = src
     return(fdict)
@@ -1245,7 +1245,7 @@ def DFtoFC_large(pts_df, out_fc, spatial_ref, df_id='SplitSort', xy=["seg_x", "s
     # join array to the XY FC; matching fields in the input will overwrite those in out_fc
     arcpy.da.ExtendTable(out_fc, df_id, arr, df_id, append_only=False) # Takes a long time
     if verbose:
-        print("OUTPUT: {}".format(out_fc))
+        print("OUTPUT: {}".format(os.path.basename(out_fc)))
     fun.print_duration(start)
     return(out_fc)
 
@@ -1272,5 +1272,5 @@ def JoinDFtoRaster(df, rst_ID, out_rst='', fill=-99999, id_fld='sort_ID', val_fl
     # Join field to raster and save as out_rst
     arcpy.CopyRaster_management(rst_ID, out_rst)
     arcpy.management.JoinField(out_rst, "Value", tbl_path, id_fld, val_fld)
-    print('OUTPUT: {}. Field "Value" is ID and "uBW" is beachwidth.'.format(out_rst))
+    print('OUTPUT: {}. Field "Value" is ID and "uBW" is beachwidth.'.format(os.path.basename(out_rst)))
     return(out_rst)
