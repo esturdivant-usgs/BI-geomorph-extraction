@@ -14,22 +14,17 @@ import core.functions_warcpy as fwa
 ############ Inputs #########################
 # site = 'Fisherman'
 # year = '2014'
-# proj_dir = r'\\Mac\stor\Projects\TransectExtraction\{}'.format(sitei+yeari)
+# proj_dir = r'\\Mac\volume\dir\{}'.format(site+year)
 
 try:
-    sitei = input("site: ")
-    yeari = input("year: ")
-    input_possible = True
-    proj_dir = r'\\IGSAGIEGGS-CSGG\Thieler_Group\Commons_DeepDive\DeepDive\NewYork\Breezy\{}'.format(sitei+yeari)
-    proj_dir = r'\\Mac\stor\Projects\TransectExtraction\{}'.format(sitei+yeari)
+    site = input("site: ")
+    year = input("year: ")
+    proj_dir = input("Path to project directory (e.g. \\\Mac\volume\dir\FireIsland2014): ")
     if not os.path.isdir(proj_dir):
-        proj_dir = input("Path to project directory (e.g. \\\Mac\stor\Projects\TransectExtraction\FireIsland2014): ")
+        proj_dir = input("Invalid pathname; try again: ")
     if not os.path.isdir(proj_dir):
         sys.exit("'{}' not recognized as folder. Operation cancelled so you can get the project folder squared away.".format(proj_dir))
-    site = sitei
-    year = yeari
 except:
-    input_possible = False
     if len(proj_dir) < 1:
         print("Looks like we can't prompt for user input so you'll need to manually enter values into the module.")
         raise

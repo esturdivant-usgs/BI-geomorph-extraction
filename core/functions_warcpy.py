@@ -200,27 +200,6 @@ def DuplicateField(fc, fld, newname, ftype=False):
             cursor.updateRow([row[0], row[0]])
     return(fc)
 
-# def AddXYAttributes(fc, newfc, prefix, proj_code=26918):
-#     try:
-#         try:
-#             RemoveLayerFromMXD(fc)
-#         except:
-#             pass
-#         arcpy.MultipartToSinglepart_management(fc,newfc) # failed for SHL2trans_temp: says 'Cannot open...'
-#     except arcpy.ExecuteError:
-#         print(arcpy.GetMessages(2))
-#         print("Attempting to continue")
-#         #RemoveLayerFromMXD(fc)
-#         arcpy.FeatureClassToFeatureClass_conversion(fc,arcpy.env.workspace,newfc)
-#         pass
-#     fieldlist = [prefix+'_Lat',prefix+'_Lon',prefix+'_x',prefix+'_y']
-#     AddNewFields(newfc, fieldlist)
-#     with arcpy.da.UpdateCursor(newfc, [prefix+'_Lon', prefix+'_Lat',"SHAPE@XY"], spatial_reference=arcpy.SpatialReference(4269)) as cursor:
-#         [cursor.updateRow([row[2][0], row[2][1], row[2]]) for row in cursor]
-#     with arcpy.da.UpdateCursor(newfc,[prefix+'_x',prefix+'_y',"SHAPE@XY"], spatial_reference=arcpy.SpatialReference(proj_code)) as cursor:
-#         [cursor.updateRow([row[2][0], row[2][1], row[2]]) for row in cursor]
-#     return newfc, fieldlist
-
 def ReplaceValueInFC(fc, oldvalue=-99999, newvalue=None, fields="*"):
     # Replace oldvalue with newvalue in fields in fc
     # First check field types
@@ -301,7 +280,7 @@ def RemoveTransectsOutsideBounds(trans, barrierBoundary, distance=200):
                     cursor.deleteRow()
     return(trans)
 
-def ExtendLine(fc, new_fc, distance, proj_code=26918):
+def ExtendLine(fc, new_fc, distance, proj_code=26918, verbose=True):
     # From GIS stack exchange http://gis.stackexchange.com/questions/71645/a-tool-or-way-to-extend-line-by-specified-distance
     # layer must have map projection
     def accumulate(iterable):
@@ -360,7 +339,7 @@ def RemoveDuplicates(trans_presort, orig_xtnd, verbose=True):
     # 3. Append original extended transects (with values) to the new transects
     arcpy.Append_management(orig_xtnd, trans_presort)
     if verbose:
-        print("{} ready for sorting.".format(trans_presort))
+        print("{} ready for sorting. It should be in your scratch geodatabase.".format(os.path.basename(trans_presort)))
     return(trans_presort)
 
 def PrepTransects_part2_old(trans_presort, LTextended, barrierBoundary=''):
@@ -409,14 +388,16 @@ def SortTransectPrep(spatialref, newfields = ['sort', 'sort_corn']):
     return(sort_lines)
 
 def SortTransectsFromSortLines(in_trans, out_trans, sort_lines=[], tID_fld='sort_ID', sort_corner='LL', verbose=True):
-    # Add the transect ID field to the transects if it doesn't already exist.
+    """
+    Sort the transects along the shoreline using pre-created lines (sort_lines) to sort.
+    """
     temppath = os.path.join(arcpy.env.scratchGDB, 'trans_')
-    try:
-        arcpy.AddField_management(in_trans, tID_fld, 'SHORT')
-    except:
-        pass
+    # Add the transect ID field to the transects if it doesn't already exist.
+    AddNewFields(in_trans,[tID_fld],fieldtype="SHORT", verbose=True)
     # If sort_lines is blank ([]), go ahead and sort the transects based on sort_corner argument.
     if not len(sort_lines):
+        if verbose:
+            print("sort_lines not specified, so we are sorting the transects in one group from the {} corner.".format(sort_corner))
         out_trans = arcpy.Sort_management(in_trans, out_trans, [['Shape', 'ASCENDING']], sort_corner) # Sort from lower lef
     else:
         if verbose:
@@ -805,12 +786,14 @@ def ArmorLineToTrans_PD(in_trans, armorLines, sl2trans_df, tID_fld, proj_code, e
         df = FCtoDF(arm2trans, xy=True, dffields=[tID_fld, 'Arm_z'])
         df.index = df.pop(tID_fld)
         df.rename(columns={'SHAPE@X':'Arm_x','SHAPE@Y':'Arm_y'}, inplace=True)
+    # Where multiple armor intersect points created along a transect, use the closest point to the shoreline.
     if df.index.duplicated().any():
         idx = df.index[df.index.duplicated()]
-        for i in idx:
-            sl = sl2trans_df.loc[i, :] # get shoreline point at transect
+        print("Looks like these transects {} are intersected by armoring lines multiple times. We will select the more seaward of the points.".format(idx.unique()))
+        for i in idx.unique():
+            sl = sl2trans_df.loc[i, :] # get shoreline point at transect #FIXME: what happens if there's no shoreline point
             rows = df.loc[i,:] # get rows with duplicated transect ID
-            rows = rows.assign(bw = lambda x: np.hypot(sl.SL_x - x.Arm_x, sl.SL_y - x.Arm_y)) # calculate dist from SL to each point in row (bw)
+            rows = rows.assign(bw = lambda x: np.hypot(sl.SL_x - x.Arm_x, sl.SL_y - x.Arm_y)) # calculate dist from SL to each point in row (bw) #FIXME: 'Series' object has no attribute 'assign'
             df.drop(i, axis=0, inplace=True)
             df = pd.concat([df, rows.loc[rows['bw'] == min(rows['bw']), flds]]) # return the row with the smallest bw
     return(df)
@@ -1010,8 +993,10 @@ def measure_Dist2Inlet(shoreline, in_trans, inletLines, tID_fld='sort_ID'):
                 mindist = np.nanmin([lenR, lenL])
                 df = df.append({tID_fld:tID, 'Dist2Inlet':mindist}, ignore_index=True)
                 try:
-                    if any(abs(df.loc[df[tID_fld]==tID-1, 'Dist2Inlet'] - mindist) > 300):
-                        print("CAUTION: Large change in Dist2Inlet values between transects {} and {}".format(tID-1, tID))
+                    dist_prev = df.loc[df[tID_fld]==tID-1, 'Dist2Inlet']
+                    if any(abs(dist_prev - mindist) > 300):
+                        print("CAUTION: Large change in Dist2Inlet values \
+                        between transects {} ({} m) and {} ({} m).".format(tID-1, dist_prev, tID, mindist))
                 except:
                     print("Error-catching is not working in Dist2Inlet.")
                     pass
