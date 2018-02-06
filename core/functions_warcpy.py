@@ -971,9 +971,11 @@ def find_ClosestPt2Trans_snap_old(in_trans, in_pts, trans_df, prefix, tID_fld='s
 Dist2Inlet
 """
 def measure_Dist2Inlet(shoreline, in_trans, inletLines, tID_fld='sort_ID'):
+    """
     # measure distance along oceanside shore from transect to inlet.
     # Uses three SearchCursors (arcpy's data access module).
     # Stores values in new data frame.
+    """
     # Initialize
     start = time.clock()
     utmSR = arcpy.Describe(in_trans).spatialReference
@@ -985,16 +987,23 @@ def measure_Dist2Inlet(shoreline, in_trans, inletLines, tID_fld='sort_ID'):
         line = row[0]
         # Loop through transect features
         for [transect, tID] in arcpy.da.SearchCursor(in_trans, ("SHAPE@",  tID_fld)):
-            if not line.disjoint(transect): # If shoreline and transect overlap...
+            if not line.disjoint(transect):
                 # 1. cut shoreline at the transect
                 [rseg, lseg] = line.cut(transect)
                 # 2. if the shoreline segment touches any inlet, get the segment length.
-                # in case of multipart features, use only the first part
+                #    If it doesn't touch an inlet, length is set to NaN to remove it from consideration.
+                #    In case of multipart features, use only the first part.
                 lenR = arcpy.Polyline(rseg.getPart(0), utmSR).length if not all(rseg.disjoint(i) for i in inlets) else np.nan
                 lenL = arcpy.Polyline(lseg.getPart(0), utmSR).length if not all(lseg.disjoint(i) for i in inlets) else np.nan
-                # 3. Return the length of the shorter segment and save it in the DF
+                # 3. If shoreline and transect intersect on an inlet line, return 0 because transect is at an inlet.
+                #    Only check for overlap at segments that touch an inlet (not NaN).
+                xpt = line.intersect(transect, 1) # point where shoreline and transect intersect
+                lenR = 0 if not np.isnan(lenR) and not all(xpt.disjoint(i) for i in inlets) else lenR
+                lenL = 0 if not np.isnan(lenL) and not all(xpt.disjoint(i) for i in inlets) else lenL
+                # 4. Return the length of the shorter segment and save it in the DF
                 mindist = np.nanmin([lenR, lenL])
                 df = df.append({tID_fld:tID, 'Dist2Inlet':mindist}, ignore_index=True)
+                # Alert if there is a large change (>300 m) in values between consecutive transects
                 try:
                     dist_prev = pd.to_numeric(df.loc[df[tID_fld]==tID-1, 'Dist2Inlet'])
                     if any(abs(dist_prev - mindist) > 300):
