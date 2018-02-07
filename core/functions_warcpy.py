@@ -240,10 +240,12 @@ def ReProject(fc, newfc, proj_code=26918, verbose=True):
     return(newfc)
 
 def DeleteFeaturesByValue(fc,fields=[], deletevalue=-99999):
+    # If the fields argument is blank, defaults to use all fields.
     if not len(fields):
         fs = arcpy.ListFields(fc)
         for f in fs:
             fields.append(f.name)
+    # Delete each row where any of the fields listed match the delete value.
     with arcpy.da.UpdateCursor(fc, fields) as cursor:
         for row in cursor:
             for i in range(len(fields)):
@@ -728,7 +730,7 @@ def JoinFields(targetfc, sourcefile, dest2src_fields, joinfields=['sort_ID']):
 """
 #%% dune and shoreline points to transects
 """
-def find_similar_fields(prefix, oldPts, fields=[]):
+def find_similar_fields(prefix, oldPts, fields=[], verbose=True):
     fmapdict = {'lon': {'dest': prefix+'_Lon'},
                 'lat': {'dest': prefix+'_Lat'},
                 'east': {'dest': prefix+'_x'},
@@ -745,7 +747,8 @@ def find_similar_fields(prefix, oldPts, fields=[]):
     for key in fdict: # Yes, this loops through keys
         src = key
         if not fieldExists(oldPts, src):
-            print('Looking for field similar to {}{}'.format(prefix, src))
+            if verbose:
+                print('Looking for field similar to {}{}'.format(prefix, src))
             # identify most similarly named field and replace in dest2src_fields
             fieldlist = arcpy.ListFields(oldPts, src+'*')
             if len(fieldlist) == 1: # if there is only one field that matches src
@@ -789,7 +792,7 @@ def ArmorLineToTrans_PD(in_trans, armorLines, sl2trans_df, tID_fld, proj_code, e
     # Where multiple armor intersect points created along a transect, use the closest point to the shoreline.
     if df.index.duplicated().any():
         idx = df.index[df.index.duplicated()]
-        print("Looks like these transects {} are intersected by armoring lines multiple times. We will select the more seaward of the points.".format(idx.unique()))
+        print("Looks like these transects {} are intersected by armoring lines multiple times. We will select the more seaward of the points.".format(idx.unique().tolist()))
         for i in idx.unique():
             sl = sl2trans_df.loc[i, :] # get shoreline point at transect #FIXME: what happens if there's no shoreline point
             rows = df.loc[i,:] # get rows with duplicated transect ID
@@ -878,14 +881,14 @@ def find_ClosestPt2Trans_snap(in_trans, dh_pts, dl_pts, trans_df, tID_fld='sort_
     # Get fieldname for elevation (Z) field
     if verbose:
         print('Getting name of DH Z field...')
-    fmapdict = find_similar_fields('DH', dh_pts, fields=['_z'])
+    fmapdict = find_similar_fields('DH', dh_pts, fields=['_z'], verbose=False)
     dhz_fld = fmapdict['_z']['src']
     dh_pts = ReProject(dh_pts, dh_pts+'_utm', proj_code=arcpy.Describe(in_trans).spatialReference.factoryCode)
 
     # Get fieldname for elevation (Z) field
     if verbose:
         print('Getting name of DL Z field...')
-    fmapdict = find_similar_fields('DL', dl_pts, fields=['_z'])
+    fmapdict = find_similar_fields('DL', dl_pts, fields=['_z'], verbose=False)
     dlz_fld = fmapdict['_z']['src']
     dl_pts = ReProject(dl_pts, dl_pts+'_utm', proj_code=arcpy.Describe(in_trans).spatialReference.factoryCode)
 
@@ -968,9 +971,11 @@ def find_ClosestPt2Trans_snap_old(in_trans, in_pts, trans_df, prefix, tID_fld='s
 Dist2Inlet
 """
 def measure_Dist2Inlet(shoreline, in_trans, inletLines, tID_fld='sort_ID'):
+    """
     # measure distance along oceanside shore from transect to inlet.
     # Uses three SearchCursors (arcpy's data access module).
     # Stores values in new data frame.
+    """
     # Initialize
     start = time.clock()
     utmSR = arcpy.Describe(in_trans).spatialReference
@@ -982,21 +987,27 @@ def measure_Dist2Inlet(shoreline, in_trans, inletLines, tID_fld='sort_ID'):
         line = row[0]
         # Loop through transect features
         for [transect, tID] in arcpy.da.SearchCursor(in_trans, ("SHAPE@",  tID_fld)):
-            if not line.disjoint(transect): # If shoreline and transect overlap...
+            if not line.disjoint(transect):
                 # 1. cut shoreline at the transect
                 [rseg, lseg] = line.cut(transect)
                 # 2. if the shoreline segment touches any inlet, get the segment length.
-                # in case of multipart features, use only the first part
+                #    If it doesn't touch an inlet, length is set to NaN to remove it from consideration.
+                #    In case of multipart features, use only the first part.
                 lenR = arcpy.Polyline(rseg.getPart(0), utmSR).length if not all(rseg.disjoint(i) for i in inlets) else np.nan
                 lenL = arcpy.Polyline(lseg.getPart(0), utmSR).length if not all(lseg.disjoint(i) for i in inlets) else np.nan
-                # 3. Return the length of the shorter segment and save it in the DF
+                # 3. If shoreline and transect intersect on an inlet line, return 0 because transect is at an inlet.
+                #    Only check for overlap at segments that touch an inlet (not NaN).
+                xpt = line.intersect(transect, 1) # point where shoreline and transect intersect
+                lenR = 0 if not np.isnan(lenR) and not all(xpt.disjoint(i) for i in inlets) else lenR
+                lenL = 0 if not np.isnan(lenL) and not all(xpt.disjoint(i) for i in inlets) else lenL
+                # 4. Return the length of the shorter segment and save it in the DF
                 mindist = np.nanmin([lenR, lenL])
                 df = df.append({tID_fld:tID, 'Dist2Inlet':mindist}, ignore_index=True)
+                # Alert if there is a large change (>300 m) in values between consecutive transects
                 try:
-                    dist_prev = df.loc[df[tID_fld]==tID-1, 'Dist2Inlet']
+                    dist_prev = pd.to_numeric(df.loc[df[tID_fld]==tID-1, 'Dist2Inlet'])
                     if any(abs(dist_prev - mindist) > 300):
-                        print("CAUTION: Large change in Dist2Inlet values \
-                        between transects {} ({} m) and {} ({} m).".format(tID-1, dist_prev, tID, mindist))
+                        print("CAUTION: Large change in Dist2Inlet values between transects {} ({} m) and {} ({} m).".format(tID-1, dist_prev, tID, mindist))
                 except:
                     print("Error-catching is not working in Dist2Inlet.")
                     pass
