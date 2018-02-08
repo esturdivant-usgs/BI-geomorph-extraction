@@ -8,10 +8,10 @@
 
     "permissions": {
       "usageType": "openSource",
-      "license": "https://github.com/esturdivant-usgs/BI-geomorph-extraction/blob/master/LICENSE"
+      "license": "https://github.com/esturdivant-usgs/BI-geomorph-extraction/blob/master/LICENSE.md"
     },
 
-    "homepageURL": "",
+    "homepageURL": "https://usgs.github.io/whcmsc-bi-transect-extractor/",
     "dowloadURL": "https://github.com/esturdivant-usgs/BI-geomorph-extraction/master.zip",
     "disclaimerURL": "https://github.com/esturdivant-usgs/BI-geomorph-extraction/LICENSE.md",
     "repositoryUrl": "https://github.com/esturdivant-usgs/BI-geomorph-extraction.git",
@@ -41,7 +41,7 @@
     },
 
     "date": {
-      "metadataLastUpdated": "2018-01-26"
+      "metadataLastUpdated": "2018-02-08"
     }
   }
 ]
