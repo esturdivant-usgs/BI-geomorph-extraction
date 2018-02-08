@@ -1,5 +1,5 @@
 # BI-geomorph-extraction
-Author: Emily Sturdivant; esturdivant@usgs.gov
+Author: Emily Sturdivant, U.S. Geological Survey | esturdivant@usgs.gov
 
 This package is used to calculate coastal geomorphology variables along shore-normal transects. It was designed to produce inputs for modeling geomorphology using a Bayesian Network and is a companion to a Methods Open-File Report titled "Evaluating barrier island characteristics and piping plover (Charadrius melodus) habitat availability along the U.S. Atlantic coast - geospatial approaches and methodology" (Zeigler and others, 2018) and various ScienceBase data releases that have been or will be published (e.g. Gutierrez and others, 2018). This repository includes a 'notebooks' folder, which document the implementation instances of the code that produced the published datasets. 
 
