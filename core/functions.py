@@ -1,6 +1,13 @@
-# Transect Extraction module
-# possible categories: preprocess, create, calculate
+# -*- coding: utf-8 -*-
+#! python3
+'''
+Barrier Island Geomorphology Extraction along transects (BI-geomorph-extraction module)
+Author: Emily Sturdivant
+email: esturdivant@usgs.gov;
 
+These functions do not use arcpy.
+Designed to be imported by either prepper.ipynb or extractor.py.
+'''
 import time
 import os
 import collections
@@ -71,6 +78,9 @@ def join_columns_id_check(df1, df2, id_fld='ID', how='outer', fill=-99999):
     df2 = check_id_fld(df2, id_fld)
     df1 = df1.drop(df1.axes[1].intersection(df2.axes[1]), axis=1, errors='ignore') # remove matching columns from target dataframe
     df1 = df1.join(df2, how=how)
+    # If the dataframe contains both fill values and Null values, replaces fill with Nulls.
+    if (df1 == fill).any().any() and (df1 == np.nan).any().any():
+        df1.replace(fill, np.nan, inplace=True)
     return(df1)
 
 def join_columns(df1, df2, id_fld='ID', how='outer'):
