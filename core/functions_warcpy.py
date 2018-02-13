@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 #! python3
+'''
+Barrier Island Geomorphology Extraction along transects (BI-geomorph-extraction module)
+Author: Emily Sturdivant
+email: esturdivant@usgs.gov;
 
-# Transect Extraction module
-# possible categories: preprocess, create, calculate
-
-# v1.0 – removed many unused functions. They are still in the former repo (plover_transect_extraction.TransectExtractoin.TE_functions_arcpy)
-
+These functions require arcpy.
+Designed to be imported by either prepper.ipynb or extractor.py.
+'''
 import time
 import os
 import collections
@@ -227,16 +229,14 @@ def CopyFCandReplaceValues(fc, oldvalue=-99999, newvalue=None, fields="*", out_f
 
 def ReProject(fc, newfc, proj_code=26918, verbose=True):
     # If spatial reference does not match desired, project in correct SR.
-    reprojected = False
     if not arcpy.Describe(fc).spatialReference.factoryCode == proj_code: # NAD83 UTM18N
-        arcpy.Project_management(fc,newfc,arcpy.SpatialReference(proj_code))
-        reprojected = True
+        arcpy.Project_management(fc, newfc, arcpy.SpatialReference(proj_code))
+        if verbose:
+            print("The projection of {} was changed. The new file is {}.".format(os.path.basename(fc), os.path.basename(newfc)))
     else:
         newfc = fc
 
     # Print message
-    if verbose and reprojected:
-        print("The projection of {} was changed. The new file is {}.".format(os.path.basename(fc), os.path.basename(newfc)))
     return(newfc)
 
 def DeleteFeaturesByValue(fc,fields=[], deletevalue=-99999):
@@ -802,8 +802,9 @@ def ArmorLineToTrans_PD(in_trans, armorLines, sl2trans_df, tID_fld, proj_code, e
     return(df)
 
 def geom_shore2trans(transect, tID, shoreline, in_pts, slp_fld, proximity=25):
-    #SUMMARY: for input transect geometry, get slope at nearest shoreline point and XY at intersect
-
+    """
+    #For input transect geometry, get slope at nearest shoreline point and XY at intersect
+    """
     # 1. Set SL_x and SL_y at point where transect intersects shoreline
     slxpt = arcpy.Point(np.nan, np.nan)
     for srow in arcpy.da.SearchCursor(shoreline, ("SHAPE@")):
@@ -852,20 +853,30 @@ def add_shorelinePts2Trans(in_trans, in_pts, shoreline, tID_fld='sort_ID', proxi
     return(df)
 
 def geom_dune2trans(trow, out_df, in_pts, z_fld, prefix, proximity=25):
+    """
+    # for 'trow' (a row in the transect search cursor),
+    # find the nearest dune point within 25 m of the transect and
+    # add to the working dataframe (out_df)
+    """
+    # initialize column names, shortest distance threshold, and found=false
     colnames_xyz = [prefix+'_x', prefix+'_y', prefix+'_z']
     colnames_snapt = [prefix+'_snapX', prefix+'_snapY']
-    # initialize shortest distance threshold and false
     shortest_dist = float(proximity)
     found = False
     # retrieve transect geom, ID value
     transect = trow[0]
     tID = trow[1]
+    # iterate through dune points using SearchCursor
+    # update the shortest distance value if the distance to the point is shorter than the threshold or than previous found.
     for prow in arcpy.da.SearchCursor(in_pts, ["SHAPE@X", "SHAPE@Y", z_fld, "OID@"]):
         in_pt = arcpy.Point(X=prow[0], Y=prow[1], Z=prow[2], ID=prow[3])
         if transect.distanceTo(in_pt) < shortest_dist:
             shortest_dist = transect.distanceTo(in_pt)
             pt = in_pt
             found = True
+    # Once all the dune points have been checked, and
+    # if one was nearer to the transect than the original threshold,
+    # then assign the XYZ values of that point to the working dataframe.
     if found:
         snappt = transect.snapToLine(arcpy.Point(pt.X, pt.Y))
         out_df.loc[tID, colnames_snapt] = [snappt[0].X, snappt[0].Y]
@@ -1019,7 +1030,7 @@ def measure_Dist2Inlet(shoreline, in_trans, inletLines, tID_fld='sort_ID'):
 """
 Beach width
 """
-def calc_BeachWidth_fill(in_trans, trans_df, maxDH, tID_fld='sort_ID', MHW='', fill=-99999):
+def calc_BeachWidth_fill(in_trans, trans_df, maxDH, tID_fld='sort_ID', MHW='', fill=-99999, skip_missing_z=True):
     # To find dlow proxy, use code written by Ben in Matlab and converted to pandas by Emily
     # Uses snapToLine() polyline geometry method from arcpy
 
@@ -1056,21 +1067,37 @@ def calc_BeachWidth_fill(in_trans, trans_df, maxDH, tID_fld='sort_ID', MHW='', f
                     bw_df.loc[tID, 'DistArm'] = np.hypot(tran['SL_x'] - ptArm[0].X, tran['SL_y'] - ptArm[0].Y)
 
                 # Select Dist value for uBW. Use DistDL if available. If not and DH < maxDH, use DistDH. If neither available, use DistArm.
-                if int(tran.DL_x) != int(fill):
-                    bw_df.loc[tID, 'uBW'] = bw_df['DistDL'].loc[tID]
-                    bw_df.loc[tID, 'uBH'] = tran['DL_zmhw']
-                    bw_df.loc[tID, 'ub_feat'] = 'DL'
-                elif int(tran.DH_x) != int(fill) and tran.DH_zmhw <= maxDH:
-                    bw_df.loc[tID, 'uBW'] = bw_df['DistDH'].loc[tID]
-                    bw_df.loc[tID, 'uBH'] = tran['DH_zmhw']
-                    bw_df.loc[tID, 'ub_feat'] = 'DH'
-                elif int(tran.Arm_x) != int(fill):
-                    bw_df.loc[tID, 'uBW'] = bw_df['DistArm'].loc[tID]
-                    bw_df.loc[tID, 'uBH'] = tran['Arm_zmhw']
-                    bw_df.loc[tID, 'ub_feat'] = 'Arm'
+                if skip_missing_z: # if Z value is fill, don't use the point even if XY is populated
+                    if int(tran.DL_z) != int(fill) and int(tran.DL_x) != int(fill):
+                        bw_df.loc[tID, 'uBW'] = bw_df['DistDL'].loc[tID]
+                        bw_df.loc[tID, 'uBH'] = tran['DL_zmhw']
+                        bw_df.loc[tID, 'ub_feat'] = 'DL'
+                    elif int(tran.DH_x) != int(fill) and int(tran.DH_z) != int(fill) and tran.DH_zmhw <= maxDH:
+                        bw_df.loc[tID, 'uBW'] = bw_df['DistDH'].loc[tID]
+                        bw_df.loc[tID, 'uBH'] = tran['DH_zmhw']
+                        bw_df.loc[tID, 'ub_feat'] = 'DH'
+                    elif int(tran.Arm_x) != int(fill) and int(tran.Arm_z) != int(fill):
+                        bw_df.loc[tID, 'uBW'] = bw_df['DistArm'].loc[tID]
+                        bw_df.loc[tID, 'uBH'] = tran['Arm_zmhw']
+                        bw_df.loc[tID, 'ub_feat'] = 'Arm'
+                    else:
+                        continue
+                # Use any point with XY matching the criteria
                 else:
-                    continue
-
+                    if int(tran.DL_x) != int(fill):
+                        bw_df.loc[tID, 'uBW'] = bw_df['DistDL'].loc[tID]
+                        bw_df.loc[tID, 'uBH'] = tran['DL_zmhw']
+                        bw_df.loc[tID, 'ub_feat'] = 'DL'
+                    elif int(tran.DH_x) != int(fill) and tran.DH_zmhw <= maxDH and int(tran.DH_z) != int(fill):
+                        bw_df.loc[tID, 'uBW'] = bw_df['DistDH'].loc[tID]
+                        bw_df.loc[tID, 'uBH'] = tran['DH_zmhw']
+                        bw_df.loc[tID, 'ub_feat'] = 'DH'
+                    elif int(tran.Arm_x) != int(fill):
+                        bw_df.loc[tID, 'uBW'] = bw_df['DistArm'].loc[tID]
+                        bw_df.loc[tID, 'uBH'] = tran['Arm_zmhw']
+                        bw_df.loc[tID, 'ub_feat'] = 'Arm'
+                    else:
+                        continue
             else:
                 continue
         except TypeError:
@@ -1209,6 +1236,8 @@ def JoinDFtoFC(df, in_fc, join_id, target_id=False, out_fc='', overwrite=True, f
     if overwrite:
         DeleteExtraFields(out_fc, [target_id])
     arcpy.da.ExtendTable(out_fc, target_id, arr, join_id, append_only=not overwrite)
+    if verbose:
+        print("Created {} from input dataframe and {} file.".format(os.path.basename(out_fc), os.path.basename(in_fc)))
     return(out_fc)
 
 def DFtoFC(df, out_fc, spatial_ref, id_fld='', xy=["seg_x", "seg_y"], keep_fields=[], fill=-99999):
