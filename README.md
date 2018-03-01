@@ -45,3 +45,9 @@ jupyter notebook
 
 5. Run extractor.ipynb.
 
+### Contents
+
+- core: functions implemented in the notebooks.
+- notebooks: prepper.ipynb and extractor.ipynb are used to perform the processing. 
+- sample_scratch: data frames in pickle format that were saved in the scratch directory during Fire Island extraction to potentially use for testing.
+- temp: notebooks for sites that have already been run. These will probably be released with the datasets they were used to create and will be removed prior to publication. 
