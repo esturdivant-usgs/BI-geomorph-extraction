@@ -8,6 +8,7 @@ Designed to be imported by either prepper.ipynb or extractor.py.
 import os
 import sys
 import arcpy
+import getpass
 from core.configmap import *
 import core.functions_warcpy as fwa
 
@@ -17,9 +18,10 @@ import core.functions_warcpy as fwa
 # proj_dir = r'\\Mac\volume\dir\{}'.format(site+year)
 
 try:
-    site = input("site: ")
-    year = input("year: ")
-    proj_dir = input("Path to project directory (e.g. \\\Mac\volume\dir\FireIsland2014): ")
+    site = input("site (options: {}): ".format(', '.join(sitemap.keys())))
+    year = input("year (options: 2010, 2012, 2014): ")
+    # proj_dir = input("Path to project directory (e.g. \\\Mac\volume\dir\FireIsland2014): ")
+    proj_dir = getpass.getpass("Path to project directory (e.g. \\\Mac\volume\dir\FireIsland2014): ")
     if not os.path.isdir(proj_dir):
         proj_dir = input("Invalid pathname; try again: ")
     if not os.path.isdir(proj_dir):
