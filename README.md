@@ -1,13 +1,13 @@
 # BI-geomorph-extraction
 Author: Emily Sturdivant, U.S. Geological Survey | esturdivant@usgs.gov
 
-This package is used to calculate coastal geomorphology variables along shore-normal transects. It was designed to produce inputs for modeling geomorphology using a Bayesian Network and is a companion to a Methods Open-File Report titled "Evaluating barrier island characteristics and piping plover (Charadrius melodus) habitat availability along the U.S. Atlantic coast - geospatial approaches and methodology" (Zeigler and others, 2018) and various ScienceBase data releases that have been or will be published (e.g. Gutierrez and others, 2018). This repository includes a 'notebooks' folder, which document the implementation instances of the code that produced the published datasets. 
+This package is used to calculate coastal geomorphology variables along shore-normal transects. It was designed to produce inputs for modeling geomorphology using a Bayesian Network and is a companion to a Methods Open-File Report titled "Evaluating barrier island characteristics and piping plover (Charadrius melodus) habitat availability along the U.S. Atlantic coast - geospatial approaches and methodology" (Zeigler and others, 2018) and various ScienceBase data releases that have been or will be published (e.g. Gutierrez and others, 2018). This repository includes a 'notebooks' folder, which document the implementation instances of the code that produced the published datasets.
 
 ## Required software
 ArcGIS Pro, which includes an installation of Anaconda and Python 3.
 
-## Get started 
-We recommend that you install this package in the ArcGIS Pro conda environment through pip: 
+## Get started
+We recommend that you install this package in the ArcGIS Pro conda environment through pip:
 
 ```bat
 \ArcGIS\Pro\bin\Python\Scripts\proenv
@@ -24,20 +24,20 @@ jupyter notebook
 
 ## How to implement:
 
-1. Acquire all input feature classes - refer to input variables in addition to the list below. 
+1. Acquire all input feature classes - refer to input variables in addition to the list below.
     - transect lines
     - DH points
     - DL points
     - shoreline points
     - DEM
-    
+
 2. Review values (mostly file paths) in setvars.py and update if needed.
 
-3. Interactively run prepper.ipynb from the ArcGIS Pro to make some those input files that require creation or modification. There are steps in the process that must be completed manually. Notes in the script describe the procedure for creating them. 
+3. Interactively run prepper.ipynb from the ArcGIS Pro to make some those input files that require creation or modification. There are steps in the process that must be completed manually. Notes in the script describe the procedure for creating them.
     - inlet lines <- DEM + **manual**
     - armoring lines <- ortho + **manual**
     - boundary polygon <- DEM + shoreline points + inlet lines (+ manual)
-    - oceanside MHW shore between inlets <- boundary polygon + inlets 
+    - oceanside MHW shore between inlets <- boundary polygon + inlets
     - supplemented and sorted transects <- script + **manual**; Sorting is only semi-automated and tricky. See explanations below/in prepper.ipynb.
     - 'tidied' extended transects <- script + **manual**
 
@@ -45,3 +45,9 @@ jupyter notebook
 
 5. Run extractor.ipynb.
 
+### Contents
+
+- core: functions implemented in the notebooks.
+- notebooks: prepper.ipynb and extractor.ipynb are used to perform the processing.
+- sample_scratch: data frames in pickle format that were saved in the scratch directory during Fire Island extraction to potentially use for testing.
+- temp: notebooks for sites that have already been run. These will probably be released with the datasets they were used to create and will be removed prior to publication.

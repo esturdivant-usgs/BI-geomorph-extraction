@@ -54,7 +54,12 @@ sitemap = {
                     'code': 'rock',
                     'MHW':0.46, 'MLW':-0.71,
                     'id_init_val':20000,
-                    'morph_state': 16}
+                    'morph_state': 16},
+    'CapeLookout':{'region': 'NorthCarolina', 'site': 'CapeLookout', # transects extended manually
+                    'code': 'calo',
+                    'MHW':0.26, 'MLW':-0.5,
+                    'id_init_val':40000,
+                    'morph_state': None}
     }
 
 ########### Default Values ##########################
