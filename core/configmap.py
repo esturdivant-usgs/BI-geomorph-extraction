@@ -59,7 +59,7 @@ sitemap = {
                     'code': 'calo',
                     'MHW':0.26, 'MLW':-0.5,
                     'id_init_val':40000,
-                    'morph_state': None}
+                    'morph_state': 11}
     }
 
 ########### Default Values ##########################
