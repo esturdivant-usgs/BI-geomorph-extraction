@@ -23,7 +23,7 @@ sitemap = {
     'Assateague':{'region': 'Delmarva', 'site': 'Assateague',
                     'code': 'asis',
                     'MHW':0.34, 'MLW':-0.13,
-                    'id_init_val':None,
+                    'id_init_val':210000,
                     'morph_state': [12, 13]},
     'ParkerRiver':{'region': 'Massachusetts', 'site': 'ParkerRiver',
                     'code': 'pr',
