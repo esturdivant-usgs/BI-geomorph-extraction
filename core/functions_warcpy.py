@@ -294,6 +294,7 @@ def ExtendLine(fc, new_fc, distance, proj_code=26918, verbose=True):
         for element in it:
             total = add(total, element)
             yield total
+
     # Project transects to UTM
     if len(os.path.split(new_fc)) > 1:
         fcpath, fcbase = os.path.split(new_fc)
@@ -304,6 +305,7 @@ def ExtendLine(fc, new_fc, distance, proj_code=26918, verbose=True):
     else:
         print('{} is already projected in UTM.'.format(os.path.basename(fc)))
         arcpy.FeatureClassToFeatureClass_conversion(fc, fcpath, fcbase)
+
     #OID is needed to determine how to break up flat list of data by feature.
     coordinates = [[row[0], row[1]] for row in
                    arcpy.da.SearchCursor(fc, ["OID@", "SHAPE@XY"],
@@ -312,6 +314,7 @@ def ExtendLine(fc, new_fc, distance, proj_code=26918, verbose=True):
     # Construct list of numbers that mark the start of a new feature class by
     # counting OIDs and accumulating the values.
     vertcounts = list(accumulate(collections.Counter(oid).values()))
+
     # Grab the last two vertices of each feature
     lastpoint = [point for x,point in enumerate(vert) if x+1 in vertcounts or x+2 in vertcounts]
     # Obtain list of tuples of new end coordinates by converting flat list of
@@ -321,6 +324,66 @@ def ExtendLine(fc, new_fc, distance, proj_code=26918, verbose=True):
     with arcpy.da.UpdateCursor(new_fc, "SHAPE@XY", explode_to_points=True) as cursor:
         for i, row in enumerate(cursor):
             if i+1 in vertcounts:
+                row[0] = newvert[j]
+                j+=1
+                cursor.updateRow(row) #FIXME: If the FC was projected as part of the function, returns RuntimeError: "The spatial index grid size is invalid."
+    if verbose:
+        print("Transects extended.")
+    return(new_fc)
+
+def ExtendLine_backward(fc, new_fc, distance, proj_code=26918, verbose=True):
+        # From GIS stack exchange http://gis.stackexchange.com/questions/71645/a-tool-or-way-to-extend-line-by-specified-distance
+        # layer must have map projection
+    def accumulate(iterable):
+        # accumulate([1,2,3,4,5]) --> 1 3 6 10 15
+        # (Equivalent to itertools.accumulate() - isn't in Python 2.7)
+        it = iter(iterable)
+        total = next(it) # initialize with the first value
+        yield total
+        for element in it:
+            total = add(total, element)
+            yield total
+    def newcoord_rev(coords, dist):
+        # From: gis.stackexchange.com/questions/71645/extending-line-by-specified-distance-in-arcgis-for-desktop
+        # Computes new coordinates x3,y3 at a specified distance along the
+        # prolongation of the line from x1,y1 to x2,y2
+        (x1,y1),(x2,y2) = coords
+        dx = x2 - x1 # change in x
+        dy = y2 - y1 # change in y
+        linelen = np.hypot(dx, dy) # distance between xy1 and xy2
+        x0 = x1 - dx/linelen * dist
+        y0 = y1 - dy/linelen * dist
+        return x0, y0
+
+    # Project transects to UTM
+    if len(os.path.split(new_fc)) > 1:
+        fcpath, fcbase = os.path.split(new_fc)
+    if not arcpy.Describe(fc).spatialReference.factoryCode == proj_code:
+        print('Projecting {} to UTM'.format(os.path.basename(fc)))
+        arcpy.Project_management(fc, fc+'utm_temp', arcpy.SpatialReference(proj_code))  # project to PCS
+        arcpy.FeatureClassToFeatureClass_conversion(fc+'utm_temp', fcpath, fcbase)
+    else:
+        print('{} is already projected in UTM.'.format(os.path.basename(fc)))
+        arcpy.FeatureClassToFeatureClass_conversion(fc, fcpath, fcbase)
+
+    #OID is needed to determine how to break up flat list of data by feature.
+    coordinates = [[row[0], row[1]] for row in
+                   arcpy.da.SearchCursor(fc, ["OID@", "SHAPE@XY"],
+                   explode_to_points=True)]
+    oid, vert = zip(*coordinates)
+    # List vert positions that mark the start of a new feature class by counting OIDs and accumulating the values.
+    vertcounts = list(accumulate(collections.Counter(oid).values()))
+
+    # Grab the first two vertices of each feature (they will either be listed in vertcounts or one ahead of one in vertcounts)
+    firstpoint = [point for x,point in enumerate(vert) if x in vertcounts or x-1 in vertcounts]
+
+    # Obtain list of tuples of new end coordinates by converting flat list of
+    # tuples to list of lists of tuples.
+    newvert = [newcoord_rev(y, float(distance)) for y in zip(*[iter(firstpoint)]*2)]
+    j = 0
+    with arcpy.da.UpdateCursor(new_fc, "SHAPE@XY", explode_to_points=True) as cursor:
+        for i, row in enumerate(cursor):
+            if i in vertcounts:
                 row[0] = newvert[j]
                 j+=1
                 cursor.updateRow(row) #FIXME: If the FC was projected as part of the function, returns RuntimeError: "The spatial index grid size is invalid."
@@ -832,6 +895,9 @@ def add_shorelinePts2Trans(in_trans, in_pts, shoreline, tID_fld='sort_ID', proxi
     # Find fieldname of slope field
     fmapdict = find_similar_fields('sl', in_pts, ['slope'])
     slp_fld = fmapdict['slope']['src']
+    if verbose:
+        print("Using field '{}' as slope.".format(slp_fld))
+    in_pts = ReProject(in_pts, in_pts+'_utm', proj_code=arcpy.Describe(in_trans).spatialReference.factoryCode)
 
     # Make dataframe with SL_x, SL_y, Bslope
     df = pd.DataFrame(columns=['SL_x', 'SL_y', 'Bslope'], dtype='float64')
@@ -890,17 +956,17 @@ def find_ClosestPt2Trans_snap(in_trans, dh_pts, dl_pts, trans_df, tID_fld='sort_
         print("\nMatching dune points with transects:")
 
     # Get fieldname for elevation (Z) field
-    if verbose:
-        print('Getting name of DH Z field...')
     fmapdict = find_similar_fields('DH', dh_pts, fields=['_z'], verbose=False)
     dhz_fld = fmapdict['_z']['src']
+    if verbose:
+        print("Using field '{}' as DH Z field...".fomat(dhz_fld))
     dh_pts = ReProject(dh_pts, dh_pts+'_utm', proj_code=arcpy.Describe(in_trans).spatialReference.factoryCode)
 
     # Get fieldname for elevation (Z) field
-    if verbose:
-        print('Getting name of DL Z field...')
     fmapdict = find_similar_fields('DL', dl_pts, fields=['_z'], verbose=False)
     dlz_fld = fmapdict['_z']['src']
+    if verbose:
+        print("Using field '{}' as DL Z field...".fomat(dlz_fld))
     dl_pts = ReProject(dl_pts, dl_pts+'_utm', proj_code=arcpy.Describe(in_trans).spatialReference.factoryCode)
 
     # Initialize dataframe
