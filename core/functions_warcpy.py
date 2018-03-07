@@ -1069,9 +1069,17 @@ def measure_Dist2Inlet(shoreline, in_trans, inletLines, tID_fld='sort_ID'):
                 [rseg, lseg] = line.cut(transect)
                 # 2. if the shoreline segment touches any inlet, get the segment length.
                 #    If it doesn't touch an inlet, length is set to NaN to remove it from consideration.
-                #    In case of multipart features, use only the first part.
-                lenR = arcpy.Polyline(rseg.getPart(0), utmSR).length if not all(rseg.disjoint(i) for i in inlets) else np.nan
-                lenL = arcpy.Polyline(lseg.getPart(0), utmSR).length if not all(lseg.disjoint(i) for i in inlets) else np.nan
+                #    In case of multipart features, use the shortest part that intersects an inlet.
+                lenR = np.nan
+                for pi in range(rseg.partCount):
+                    part = arcpy.Polyline(rseg.getPart(pi), utmSR)
+                    if not all(part.disjoint(i) for i in inlets):
+                        lenR = np.nanmin([lenR, part.length])
+                lenL = np.nan
+                for pi in range(lseg.partCount):
+                    part = arcpy.Polyline(lseg.getPart(pi), utmSR)
+                    if not all(part.disjoint(i) for i in inlets):
+                        lenL = np.nanmin([lenL, part.length])
                 # 3. If shoreline and transect intersect on an inlet line, return 0 because transect is at an inlet.
                 #    Only check for overlap at segments that touch an inlet (not NaN).
                 xpt = line.intersect(transect, 1) # point where shoreline and transect intersect
