@@ -7,8 +7,7 @@ This package is used to calculate coastal geomorphology variables along shore-no
 ArcGIS Pro, which includes an installation of Anaconda and Python 3. The default installation creates a conda environment, `arcgispro-py3` where you have access to the python 3 version of arcpy as well as the other ArcGIS Pro default Python programs. This installation of Anaconda is separate from any existing installations you may have.
 
 ## Get started
-We recommend that you install this package in the ArcGIS Pro conda environment through pip. First, activate the arcgispro-py3 conda environment: `\ArcGIS\Pro\bin\Python\Scripts\proenv # Activate the arcgispro-py3 conda environment`
-Then, install this package: `pip install git+https://github.com/esturdivant-usgs/BI-geomorph-extraction.git`
+We recommend that you install this package in the ArcGIS Pro conda environment through pip. First, activate the arcgispro-py3 conda environment: `\ArcGIS\Pro\bin\Python\Scripts\proenv`. Then, install this package: `pip install git+https://github.com/esturdivant-usgs/BI-geomorph-extraction.git`
 
 The Jupyter notebook files must be run within the ArcGIS Pro conda environment. To do so, type the following in your command prompt (assuming it has the default set-up and substituting path\to\dir with the location of the repository):
 
