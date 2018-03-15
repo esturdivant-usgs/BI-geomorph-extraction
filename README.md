@@ -4,14 +4,14 @@ Author: Emily Sturdivant, U.S. Geological Survey | esturdivant@usgs.gov
 This package is used to calculate coastal geomorphology variables along shore-normal transects. It was designed to produce inputs for modeling geomorphology using a Bayesian Network and is a companion to a Methods Open-File Report titled "Evaluating barrier island characteristics and piping plover (Charadrius melodus) habitat availability along the U.S. Atlantic coast - geospatial approaches and methodology" (Zeigler and others, 2018) and various ScienceBase data releases that have been or will be published (e.g. Gutierrez and others, 2018). This repository includes a 'notebooks' folder, which document the implementation instances of the code that produced the published datasets.
 
 ## Required software
-ArcGIS Pro, which includes an installation of Anaconda and Python 3.
+ArcGIS Pro, which includes an installation of Anaconda and Python 3. The default installation creates a conda environment, `arcgispro-py3` where you have access to the python 3 version of arcpy as well as the other ArcGIS Pro default Python programs. This installation of Anaconda is separate from any existing installations you may have.
 
 ## Get started
 We recommend that you install this package in the ArcGIS Pro conda environment through pip:
 
 ```bat
-\ArcGIS\Pro\bin\Python\Scripts\proenv
-pip install git+https://github.com/esturdivant-usgs/BI-geomorph-extraction.git
+\ArcGIS\Pro\bin\Python\Scripts\proenv # Activate the arcgispro-py3 conda environment
+pip install git+https://github.com/esturdivant-usgs/BI-geomorph-extraction.git # Install this package
 ```
 
 The Jupyter notebook files must be run within the ArcGIS Pro conda environment. To do so, type the following in your command prompt (assuming it has the default set-up and substituting path\to\dir with the location of the repository):
