@@ -294,6 +294,17 @@ def ExtendLine(fc, new_fc, distance, proj_code=26918, verbose=True):
         for element in it:
             total = add(total, element)
             yield total
+    def newcoord_rev(coords, dist):
+        # From: gis.stackexchange.com/questions/71645/extending-line-by-specified-distance-in-arcgis-for-desktop
+        # Computes new coordinates x0,y0 at a specified distance along the
+        # prolongation of the line from x2,y2 to x1,y1
+        (x1,y1),(x2,y2) = coords
+        dx = x2 - x1 # change in x
+        dy = y2 - y1 # change in y
+        linelen = np.hypot(dx, dy) # distance between xy1 and xy2
+        x0 = x1 - dx/linelen * dist
+        y0 = y1 - dy/linelen * dist
+        return x0, y0
 
     # Project transects to UTM
     if len(os.path.split(new_fc)) > 1:
@@ -315,21 +326,38 @@ def ExtendLine(fc, new_fc, distance, proj_code=26918, verbose=True):
     # counting OIDs and accumulating the values.
     vertcounts = list(accumulate(collections.Counter(oid).values()))
 
-    # Grab the last two vertices of each feature
-    lastpoint = [point for x,point in enumerate(vert) if x+1 in vertcounts or x+2 in vertcounts]
-    # Obtain list of tuples of new end coordinates by converting flat list of
-    # tuples to list of lists of tuples.
-    newvert = [fun.newcoord(y, float(distance)) for y in zip(*[iter(lastpoint)]*2)]
-    j = 0
-    with arcpy.da.UpdateCursor(new_fc, "SHAPE@XY", explode_to_points=True) as cursor:
-        for i, row in enumerate(cursor):
-            if i+1 in vertcounts:
-                row[0] = newvert[j]
-                j+=1
-                cursor.updateRow(row) #FIXME: If the FC was projected as part of the function, returns RuntimeError: "The spatial index grid size is invalid."
-    if verbose:
-        print("Transects extended.")
-    return(new_fc)
+    if distance >= 0:
+        # Grab the last two vertices of each feature
+        lastpoint = [point for x,point in enumerate(vert) if x+1 in vertcounts or x+2 in vertcounts]
+        # Obtain list of tuples of new end coordinates by converting flat list of
+        # tuples to list of lists of tuples.
+        newvert = [fun.newcoord(y, float(distance)) for y in zip(*[iter(lastpoint)]*2)]
+        j = 0
+        with arcpy.da.UpdateCursor(new_fc, "SHAPE@XY", explode_to_points=True) as cursor:
+            for i, row in enumerate(cursor):
+                if i+1 in vertcounts:
+                    row[0] = newvert[j]
+                    j+=1
+                    cursor.updateRow(row) #FIXME: If the FC was projected as part of the function, returns RuntimeError: "The spatial index grid size is invalid."
+        if verbose:
+            print("Transects extended.")
+        return(new_fc)
+    elif distance < 0:
+        # Grab the first two vertices of each feature (they will either be listed in vertcounts or one ahead of one in vertcounts)
+        firstpoint = [point for x, point in enumerate(vert) if x in vertcounts or x-1 in vertcounts]
+        # Obtain list of tuples of new end coordinates by converting flat list of
+        # tuples to list of lists of tuples.
+        newvert = [newcoord_rev(y, float(distance)) for y in zip(*[iter(firstpoint)]*2)]
+        j = 0
+        with arcpy.da.UpdateCursor(new_fc, "SHAPE@XY", explode_to_points=True) as cursor:
+            for i, row in enumerate(cursor):
+                if i in vertcounts:
+                    row[0] = newvert[j]
+                    j+=1
+                    cursor.updateRow(row) #FIXME: If the FC was projected as part of the function, returns RuntimeError: "The spatial index grid size is invalid."
+        if verbose:
+            print("Transects extended.")
+        return(new_fc)
 
 def ExtendLine_backward(fc, new_fc, distance, proj_code=26918, verbose=True):
         # From GIS stack exchange http://gis.stackexchange.com/questions/71645/a-tool-or-way-to-extend-line-by-specified-distance
@@ -343,17 +371,7 @@ def ExtendLine_backward(fc, new_fc, distance, proj_code=26918, verbose=True):
         for element in it:
             total = add(total, element)
             yield total
-    def newcoord_rev(coords, dist):
-        # From: gis.stackexchange.com/questions/71645/extending-line-by-specified-distance-in-arcgis-for-desktop
-        # Computes new coordinates x3,y3 at a specified distance along the
-        # prolongation of the line from x1,y1 to x2,y2
-        (x1,y1),(x2,y2) = coords
-        dx = x2 - x1 # change in x
-        dy = y2 - y1 # change in y
-        linelen = np.hypot(dx, dy) # distance between xy1 and xy2
-        x0 = x1 - dx/linelen * dist
-        y0 = y1 - dy/linelen * dist
-        return x0, y0
+
 
     # Project transects to UTM
     if len(os.path.split(new_fc)) > 1:
@@ -888,6 +906,8 @@ def geom_shore2trans(transect, tID, shoreline, in_pts, slp_fld, proximity=25):
     return(slxpt.X, slxpt.Y, slp)
 
 def add_shorelinePts2Trans(in_trans, in_pts, shoreline, tID_fld='sort_ID', proximity=25, verbose=True):
+    """
+    """
     start = time.clock()
     if verbose:
         print("\nMatching shoreline points to transects...")
@@ -920,6 +940,8 @@ def add_shorelinePts2Trans(in_trans, in_pts, shoreline, tID_fld='sort_ID', proxi
 
 def geom_dune2trans(trow, out_df, in_pts, z_fld, prefix, proximity=25):
     """
+    Find the nearest dune point to the input transect.
+
     # for 'trow' (a row in the transect search cursor),
     # find the nearest dune point within 25 m of the transect and
     # add to the working dataframe (out_df)
@@ -1226,14 +1248,14 @@ Format conversion
 def TransectsToPointsDF(in_trans, barrierBoundary, fc_out='', tID_fld='sort_ID', step=5):
     start = time.clock()
 
-    out_clipped='tidytrans_clipped'
-    print("Clipping transects to within the shoreline bounds ('{}')...".format(out_clipped))
+    out_clipped = os.path.join(arcpy.env.scratchGDB, 'tidytrans_clipped')
+    print("Clipping transects to within the shoreline bounds ('{}')...".format(os.path.basename(out_clipped)))
     arcpy.Clip_analysis(in_trans, barrierBoundary, os.path.join(arcpy.env.scratchGDB, out_clipped))
 
     print('Getting points every 5m along each transect and saving in new dataframe...')
     # Initialize empty dataframe
     df = pd.DataFrame(columns=[tID_fld, 'seg_x', 'seg_y'])
-    # Get shape object and tID value for each transects
+    # Get shape object and tID value for each transect
     for line, ID in arcpy.da.SearchCursor(out_clipped, ("SHAPE@", tID_fld)):
         # Get points in 5m increments along transect and save to df
         for i in range(0, int(line.length), step):
