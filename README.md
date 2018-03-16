@@ -2,7 +2,7 @@
 Author: Emily Sturdivant, U.S. Geological Survey | esturdivant@usgs.gov
 
 ## Overview
-This package is used to calculate coastal geomorphology variables along shore-normal transects. It produces inputs for modeling geomorphology using a Bayesian Network and is a companion to a USGS report titled "Evaluating barrier island characteristics and piping plover (Charadrius melodus) habitat availability along the U.S. Atlantic coast - geospatial approaches and methodology" (Zeigler and others, in review) and various USGS data releases that have been or will be published (e.g. Gutierrez and others, in review). For detailed methodology, please refer to the report by Zeigler and others. 
+This package is used to calculate coastal geomorphology variables along shore-normal transects. It produces inputs for modeling geomorphology using a Bayesian Network and is a companion to a USGS report titled "Evaluating barrier island characteristics and piping plover (Charadrius melodus) habitat availability along the U.S. Atlantic coast - geospatial approaches and methodology" (Zeigler and others, in review) and various USGS data releases that have been or will be published (e.g. Gutierrez and others, in review). For more detail, please refer to the report by Zeigler and others. 
 
 ## Get started
 
@@ -23,7 +23,7 @@ jupyter notebook
 ## How to implement:
 
 1. Acquire all input feature classes - refer to input variables in addition to the list below.
-    - transect lines
+    - Long-term shoreline change rates transect file from the National Assessment of Shoreline Change ([U.S. Geological Survey Open-File Report 2010-1119](https://pubs.usgs.gov/of/2010/1119/data_catalog.html "U.S. Geological Survey Open-File Report 2010-1119"))
     - DH points
     - DL points
     - shoreline points
