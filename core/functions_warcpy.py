@@ -981,14 +981,14 @@ def find_ClosestPt2Trans_snap(in_trans, dh_pts, dl_pts, trans_df, tID_fld='sort_
     fmapdict = find_similar_fields('DH', dh_pts, fields=['_z'], verbose=False)
     dhz_fld = fmapdict['_z']['src']
     if verbose:
-        print("Using field '{}' as DH Z field...".fomat(dhz_fld))
+        print("Using field '{}' as DH Z field...".format(dhz_fld))
     dh_pts = ReProject(dh_pts, dh_pts+'_utm', proj_code=arcpy.Describe(in_trans).spatialReference.factoryCode)
 
     # Get fieldname for elevation (Z) field
     fmapdict = find_similar_fields('DL', dl_pts, fields=['_z'], verbose=False)
     dlz_fld = fmapdict['_z']['src']
     if verbose:
-        print("Using field '{}' as DL Z field...".fomat(dlz_fld))
+        print("Using field '{}' as DL Z field...".format(dlz_fld))
     dl_pts = ReProject(dl_pts, dl_pts+'_utm', proj_code=arcpy.Describe(in_trans).spatialReference.factoryCode)
 
     # Initialize dataframe
