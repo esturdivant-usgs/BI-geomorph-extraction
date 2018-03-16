@@ -972,6 +972,11 @@ def geom_dune2trans(trow, out_df, in_pts, z_fld, prefix, proximity=25):
     return(out_df)
 
 def find_ClosestPt2Trans_snap(in_trans, dh_pts, dl_pts, trans_df, tID_fld='sort_ID', proximity=25, verbose=True, fill=-99999):
+    """
+    Find the nearest dune crest/toe point to the transects.
+
+    
+    """
     # 12 minutes for FireIsland
     start = time.clock()
     if verbose:
