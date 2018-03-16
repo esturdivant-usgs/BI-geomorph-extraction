@@ -10,5 +10,5 @@ setup(name='BI-geomorph-extraction',
       url='https://github.com/esturdivant-usgs/BI-geomorph-extraction',
       packages=[],
       python_requires='~=3.3',
-      install_requires=['pandas'],
+      install_requires=['pandas', 'jupyter'],
      )
