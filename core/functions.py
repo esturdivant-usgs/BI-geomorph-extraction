@@ -122,7 +122,7 @@ def sort_pts(df, tID_fld='sort_ID', pID_fld='SplitSort'):
         df.rename(index=str, columns={'SHAPE@X':'seg_x', 'SHAPE@Y':'seg_y'}, inplace=True)
     # 2. calculate pt distance to MHW
     df.reset_index(drop=True, inplace=True)
-    dist_seg = np.hypot(df.seg_x - df.SL_x, df.seg_y - df.SL_y)
+    dist_seg = np.hypot(df.seg_x - df.SL_x, df.seg_y - df.SL_y) #FIXME: alternate to SL_x and SL_y is the first point on the clipped transect. Helpful for the hypot to end up negatir
     df = join_columns(df, pd.DataFrame({'Dist_Seg': dist_seg}, index=df.index))
     # 3. Sort and create pID_fld (SplitSort)
     df = df.sort_values(by=[tID_fld, 'Dist_Seg']).reset_index(drop=True)
