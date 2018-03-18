@@ -643,7 +643,9 @@ def CreateShoreBetweenInlets(shore_delineator, inletLines, out_line, ShorelinePt
 #     return out_line
 
 def RasterToLandPerimeter(in_raster, out_polygon, threshold, agg_dist='30 METERS', min_area='300 SquareMeters', min_hole_sz='300 SquareMeters', manualadditions=None):
-    """ Raster to Polygon: DEM => Reclass => MHW line """
+    """
+    Raster to Polygon: DEM => Reclass => MHW line
+    """
     r2p = os.path.join(arcpy.env.scratchGDB, out_polygon+'_r2p_temp')
     r2p_union = os.path.join(arcpy.env.scratchGDB, out_polygon+'_r2p_union_temp')
 
@@ -658,8 +660,12 @@ def RasterToLandPerimeter(in_raster, out_polygon, threshold, agg_dist='30 METERS
         arcpy.AggregatePolygons_cartography(r2p, out_polygon, agg_dist, min_area, min_hole_sz)
     return(out_polygon)
 
-def CombineShorelinePolygons(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly, SA_bounds=''):
-    # Use MTL and MHW contour polygons to create full barrier island shoreline polygon; Shoreline at MHW on oceanside and MTL on bayside
+def CombineShorelinePolygons(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly, SA_bounds='', verbose=True):
+    """
+    Use MTL and MHW contour polygons to create shoreline polygon.
+    'Shoreline' = MHW on oceanside and MTL on bayside
+    """
+    start = time.clock()
     # Inlet lines must intersect the MHW polygon
     symdiff = os.path.join(arcpy.env.scratchGDB, 'shore_1symdiff')
     split_lyrname = 'shore_2split'
@@ -676,13 +682,19 @@ def CombineShorelinePolygons(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly, 
 
     print("Isolating the above-MTL portion of the polygon to the bayside...")
     # Select bayside MHW-MTL area, polygons that don't intersect shoreline points
+    pcnt = 0
+    # Get shoreline points geometry objects
+    slpts = [srow[0] for srow in arcpy.da.SearchCursor(inletLines, ("SHAPE@"))]
     with arcpy.da.UpdateCursor(split, ("SHAPE@")) as cursor:
         for prow in cursor:
             pgeom = prow[0]
-            for srow in arcpy.da.SearchCursor(ShorelinePts, ("SHAPE@")):
-                spt = srow[0] # point geometry
-                if not pgeom.disjoint(spt):
-                    cursor.deleteRow()
+            # If polygon instersects any shoreline point, delete it
+            if not all(pgeom.disjoint(spt) for spt in slpts):
+                cursor.deleteRow()
+            if verbose:
+                pcnt += 1
+                if pcnt % 100 < 1:
+                    print('...duration at polygon {}: {}'.format(pcnt, fun.print_duration(start, True)))
 
     # Merge bayside MHW-MTL with above-MHW polygon
     arcpy.Union_analysis([split, bndMHW], union_2)
@@ -690,29 +702,6 @@ def CombineShorelinePolygons(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly, 
     print('''\nUser input required! Select extra features in {} for deletion.\n
         Recommended technique: select the polygon/s to keep and then Switch Selection.\n'''.format(os.path.basename(bndpoly)))
     return(bndpoly)
-
-# def CombineShorelinePolygons_old2(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly):
-#     # Use MTL and MHW contour polygons to create full barrier island shoreline polygon; Shoreline at MHW on oceanside and MTL on bayside
-#     # Inlet lines must intersect the MHW polygon
-#     symdiff = os.path.join(arcpy.env.scratchGDB, 'symdiff')
-#     split_lyrname = 'split_temp'
-#     split = os.path.join(arcpy.env.scratchGDB, 'split_temp')
-#     union_2 = os.path.join(arcpy.env.scratchGDB, 'union_2_temp')
-#
-#     # Create layer (symdiff) of land between MTL and MHW and split by inlets
-#     arcpy.Delete_management(symdiff) # delete if already exists
-#     arcpy.SymDiff_analysis(bndMTL, bndMHW, symdiff)
-#     arcpy.FeatureToPolygon_management([symdiff, inletLines], split) # Split MTL features at inlets
-#
-#     # Select bayside MHW-MTL area, polygons that don't intersect shoreline points
-#     arcpy.SelectLayerByLocation_management(split_lyrname, "INTERSECT", ShorelinePts, '#', "NEW_SELECTION")
-#     arcpy.SelectLayerByLocation_management(split_lyrname, "#", ShorelinePts, '#', "SWITCH_SELECTION")
-#     # arcpy.FeatureClassToFeatureClass_conversion(split_lyrname, arcpy.env.scratchGDB, 'mtlkeep')
-#     arcpy.Union_analysis([split_lyrname, bndMHW], union_2)
-#     arcpy.Dissolve_management(union_2, bndpoly, multi_part='SINGLE_PART') # Dissolve all features in union_2 to single part polygons
-#     print('''\nUser input required! Select extra features in {} for deletion.\n
-#         Recommended technique: select the polygon/s to keep and then Switch Selection.\n'''.format(bndpoly))
-#     return bndpoly
 
 def DEMtoFullShorelinePoly(elevGrid, MTL, MHW, inletLines, ShorelinePts, SA_bounds=''):
     bndMTL = 'bndpoly_mtl'
@@ -975,7 +964,7 @@ def find_ClosestPt2Trans_snap(in_trans, dh_pts, dl_pts, trans_df, tID_fld='sort_
     """
     Find the nearest dune crest/toe point to the transects.
 
-    
+
     """
     # 12 minutes for FireIsland
     start = time.clock()
@@ -1016,57 +1005,6 @@ def find_ClosestPt2Trans_snap(in_trans, dh_pts, dl_pts, trans_df, tID_fld='sort_
             tID = trow[1]
             if tID % 100 < 1:
                 print('...duration at transect {}: {}'.format(tID, fun.print_duration(start, True)))
-
-    duration = fun.print_duration(start)
-    return(out_df)
-
-def find_ClosestPt2Trans_snap_old(in_trans, in_pts, trans_df, prefix, tID_fld='sort_ID', proximity=25, verbose=True, fill=-99999):
-    # About 1 minute per transect
-    start = time.clock()
-    if verbose:
-        print("\nMatching {} points with transects:".format(prefix))
-
-    # Get fieldname for elevation (Z) field
-    if prefix == 'DH' or prefix == 'DL':
-        if verbose:
-            print('Getting name of Z field...')
-        fmapdict = find_similar_fields(prefix, in_pts, fields=['_z'])
-        z_fld = fmapdict['_z']['src']
-    else:
-        print("Prefix is not 'DH' or 'DL' and we don't have a contingency for that.")
-    in_pts = ReProject(in_pts, in_pts+'_utm', proj_code=arcpy.Describe(in_trans).spatialReference.factoryCode)
-
-    # Initialize dataframe
-    colnames_xyz = [prefix+'_x', prefix+'_y', prefix+'_z']
-    colnames_snapt = [prefix+'_snapX', prefix+'_snapY']
-    out_df = pd.DataFrame(columns=colnames_xyz + colnames_snapt, dtype='f8')
-    out_df.index.name = tID_fld
-
-    # Find nearest point
-    if verbose:
-        print('Looping through transects and {} points to find nearest point within {} m...'.format(prefix, proximity))
-    # For each transect...
-    for row in arcpy.da.SearchCursor(in_trans, ("SHAPE@", tID_fld)):
-        # initialize shortest distance threshold and false
-        shortest_dist = float(proximity)
-        found = False
-        # retrieve transect geom, ID value
-        transect = row[0]
-        tID = row[1]
-        for prow in arcpy.da.SearchCursor(in_pts, ["SHAPE@X", "SHAPE@Y", z_fld, "OID@"]):
-            in_pt = arcpy.Point(X=prow[0], Y=prow[1], Z=prow[2], ID=prow[3])
-            if transect.distanceTo(in_pt) < shortest_dist:
-                shortest_dist = transect.distanceTo(in_pt)
-                pt = in_pt
-                found = True
-        if found:
-            snappt = transect.snapToLine(arcpy.Point(pt.X, pt.Y))
-            out_df.loc[tID, colnames_snapt] = [snappt[0].X, snappt[0].Y]
-            out_df.loc[tID, colnames_xyz] = [pt.X, pt.Y, pt.Z]
-        if verbose:
-            if tID % 100 < 1:
-                print('Duration at transect {}: {}'.format(tID, fun.print_duration(start, True)))
-                print('Last line of dataframe: {}'.format(out_df.iloc[-1]))
 
     duration = fun.print_duration(start)
     return(out_df)
