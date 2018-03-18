@@ -22,12 +22,10 @@ jupyter notebook
 
 ## How to implement:
 
-1. Acquire all input feature classes - refer to input variables in addition to the list below.
-    - Long-term shoreline change rates transect file from the National Assessment of Shoreline Change ([U.S. Geological Survey Open-File Report 2010-1119](https://pubs.usgs.gov/of/2010/1119/data_catalog.html "U.S. Geological Survey Open-File Report 2010-1119"))
-    - DH points
-    - DL points
-    - shoreline points
-    - DEM
+1. Acquire all input datasets and save them into an Esri file geodatabase.
+    - NASC transect lines. Long-term shoreline change rates transect file from the National Assessment of Shoreline Change ([U.S. Geological Survey Open-File Report 2010-1119](https://pubs.usgs.gov/of/2010/1119/data_catalog.html "U.S. Geological Survey Open-File Report 2010-1119"))
+    - Lidar-derived beach morphology points. These are published through the USGS National Assessment of Coastal Change Hazards [Beach Morphology (Dune Crest, Dune Toe, and Shoreline) for U.S. Sandy Coastlines] (https://coastal.er.usgs.gov/data-release/doi-F7GF0S0Z/). They need to be separated into shoreline, dune crest, and dune toe points. 
+    - Digital elevation model (DEM). A good source for airborne lidar datasets is [NOAA's Digital Coast](https://coast.noaa.gov/dataviewer/). The lidar dataset should be the same as that used to derive the morphology points.
 
 2. Review values (mostly file paths) in setvars.py and update if needed.
 
