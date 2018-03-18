@@ -616,31 +616,6 @@ def CreateShoreBetweenInlets(shore_delineator, inletLines, out_line, ShorelinePt
     dissolve_fld = "FID_{}".format(os.path.basename(shore_delineator))
     arcpy.Dissolve_management(split+'_join', out_line, [[dissolve_fld]], multi_part="SINGLE_PART")
     return out_line
-#
-# def CreateShoreBetweenInlets_old(shore_delineator,inletLines, out_line, ShorelinePts, proj_code=26918):
-#     # initialize temp layer names
-#     split_temp = os.path.join(arcpy.env.scratchGDB, 'split_temp')
-#     # Ready layers for processing
-#     DeleteExtraFields(inletLines)
-#     DeleteExtraFields(shore_delineator)
-#     shore_delineator = ReProject(shore_delineator,shore_delineator+'_utm',proj_code) # Problems projecting
-#     typeFC = arcpy.Describe(shore_delineator).shapeType
-#     if typeFC == "Point" or typeFC =='Multipoint':
-#         line_temp = os.path.join(arcpy.env.scratchGDB, 'line_temp')
-#         shore_temp = os.path.join(arcpy.env.scratchGDB, 'shore_temp')
-#         # Create shoreline from shoreline points
-#         arcpy.PointsToLine_management(shore_delineator, line_temp)
-#         shore_delineator = shore_temp
-#         # Merge and then extend shoreline to inlet lines
-#         arcpy.Merge_management([line_temp,inletLines],shore_delineator)
-#         arcpy.ExtendLine_edit(shore_delineator,'500 Meters')
-#     # Eliminate extra lines, e.g. bayside, based on presence of SHLpts
-#     arcpy.Delete_management(split_temp) # delete if already exists
-#     arcpy.FeatureToLine_management([shore_delineator, inletLines], split_temp)
-#     arcpy.SelectLayerByLocation_management("split_temp", "INTERSECT", ShorelinePts,'1 METERS')
-#     print('CHECK THIS PROCESS. Added Dissolve operation to CreateShore... and so far it has not been tested.')
-#     arcpy.Dissolve_management('split_temp', out_line, [["FID_{}".format(shore_delineator)]])
-#     return out_line
 
 def RasterToLandPerimeter(in_raster, out_polygon, threshold, agg_dist='30 METERS', min_area='300 SquareMeters', min_hole_sz='300 SquareMeters', manualadditions=None):
     """
@@ -683,6 +658,7 @@ def CombineShorelinePolygons(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly, 
     print("Isolating the above-MTL portion of the polygon to the bayside...")
     # Select bayside MHW-MTL area, polygons that don't intersect shoreline points
     pcnt = 0
+    totalp = arcpy.GetCount_management(split)[0]
     # Get shoreline points geometry objects
     slpts = [srow[0] for srow in arcpy.da.SearchCursor(inletLines, ("SHAPE@"))]
     with arcpy.da.UpdateCursor(split, ("SHAPE@")) as cursor:
@@ -694,7 +670,8 @@ def CombineShorelinePolygons(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly, 
             if verbose:
                 pcnt += 1
                 if pcnt % 100 < 1:
-                    print('...duration at polygon {}: {}'.format(pcnt, fun.print_duration(start, True)))
+                    print('...duration at polygon {} out of {}: {}'.format(pcnt,
+                            fun.print_duration(start, totalp, True)))
 
     # Merge bayside MHW-MTL with above-MHW polygon
     arcpy.Union_analysis([split, bndMHW], union_2)
