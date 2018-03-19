@@ -655,23 +655,18 @@ def CombineShorelinePolygons(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly, 
     else:
         arcpy.FeatureToPolygon_management([symdiff, inletLines], split) # Split MTL features at inlets
 
-    print("Isolating the above-MTL portion of the polygon to the bayside...")
+    print("Isolating the below-MHW portion of the polygon to the bayside...")
     # Select bayside MHW-MTL area, polygons that don't intersect shoreline points
-    pcnt = 0
-    totalp = arcpy.GetCount_management(split)[0]
     # Get shoreline points geometry objects
-    slpts = [srow[0] for srow in arcpy.da.SearchCursor(inletLines, ("SHAPE@"))]
+    #FIXME?: alternative to these cursor operations are SpatialJoin_analysis with KEEP_COMMON, as in CreateShoreBetweenInlets()
+    slpts = [srow[0] for srow in arcpy.da.SearchCursor(ShorelinePts, ("SHAPE@"))]
     with arcpy.da.UpdateCursor(split, ("SHAPE@")) as cursor:
         for prow in cursor:
             pgeom = prow[0]
-            # If polygon instersects any shoreline point, delete it
-            if not all(pgeom.disjoint(spt) for spt in slpts):
+            # Delete the polygon if it instersects any shoreline point
+            # (if not all of the points (with 10 m buffer) are disjoint from the polygon)
+            if not all(pgeom.disjoint(spt.buffer(10)) for spt in slpts):
                 cursor.deleteRow()
-            if verbose:
-                pcnt += 1
-                if pcnt % 100 < 1:
-                    print('...duration at polygon {} out of {}: {}'.format(pcnt,
-                            fun.print_duration(start, totalp, True)))
 
     # Merge bayside MHW-MTL with above-MHW polygon
     arcpy.Union_analysis([split, bndMHW], union_2)
