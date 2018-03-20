@@ -49,10 +49,10 @@ def check_id_fld(df, id_fld, fill=-99999):
         # Evaluate df.id_fld:
         bad_id_col = any([df.duplicated(id_fld).any(), df[id_fld].isnull().values.any(), any(df[id_fld]==fill)])
         if bad_id_col and bad_idx:
-            raise IndexError('There are errors in both the index and the identified ID column.')
+            raise IndexError('There are errors in both the index and the identified ID column. Errors include duplicate null or fill values in the index.')
         elif bad_id_col and not bad_idx:
             if not df.index.name == id_fld:
-                raise IndexError("There are errors in the identified ID column, but not in the index. However, we can't be sure that the index is correct because the name does not match the ID.")
+                raise IndexError("There are errors in the identified ID column, but not in the index. Errors include duplicate, null, or fill values in the index. However, we can't be sure that the index is correct because the name does not match the ID.")
         elif not bad_id_col and bad_idx:
             df.index = df[id_fld]
         elif not bad_id_col and not bad_idx:
@@ -65,7 +65,7 @@ def check_id_fld(df, id_fld, fill=-99999):
             print('Unforeseen situation. Check the code.')
         df.drop(id_fld, axis=1, inplace=True)
     elif bad_idx:
-        raise IndexError('There are errors in the index and the identified ID column does not exist.')
+        raise IndexError('There are errors in the index and the identified ID column does not exist. Errors include duplicate, null, or fill values in the index.')
     else:
         df.index.name = id_fld
     return(df)

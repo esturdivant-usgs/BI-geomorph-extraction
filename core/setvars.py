@@ -23,7 +23,7 @@ try:
     # proj_dir = input("Path to project directory (e.g. \\\Mac\volume\dir\FireIsland2014): ")
     proj_dir = getpass.getpass("Path to project directory (e.g. \\\Mac\volume\dir\FireIsland2014): ")
     if not os.path.isdir(proj_dir):
-        proj_dir = input("Invalid pathname; try again: ")
+        proj_dir = getpass.getpass("Invalid pathname. Try again: ")
     if not os.path.isdir(proj_dir):
         sys.exit("'{}' not recognized as folder. Operation cancelled so you can get the project folder squared away.".format(proj_dir))
 except:

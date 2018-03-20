@@ -257,19 +257,31 @@ def DeleteFeaturesByValue(fc,fields=[], deletevalue=-99999):
 Pre-processing
 """
 # Part 1 functions
-def ProcessDEM(elevGrid, elevGrid_5m, utmSR):
-    # If cell size is not 1x1m in NAD83 UTM Zone__, Project it to such.
-    # Aggregate the raster to 5m x 5m
+def ProcessDEM(elevGrid, utmSR):
+    """
+    Check that raster is 5x5 resolution and in correct projection.
+    """
+    # Get raster properties: spatial ref and cell size
     sr = arcpy.Describe(elevGrid).spatialReference
     cs = arcpy.GetRasterProperties_management(elevGrid, "CELLSIZEX")
+
+    # If DEM is already 5x5 in correct projection, return the DEM filename
+    if sr == utmSR and cs.getOutput(0) != '5':
+        print('Raster already projected at correct resolution and SR.')
+        return(elevGrid)
+
+    # If cell size is not 1x1m in NAD83 UTM Zone__, Project it to such.
     if sr != utmSR or cs.getOutput(0) != '1':
         elevGrid2 = elevGrid+'_projected'
-        arcpy.ProjectRaster_management(elevGrid, elevGrid2, utmSR,cell_size="1")
+        arcpy.ProjectRaster_management(elevGrid, elevGrid2, utmSR, cell_size="1")
     else:
         elevGrid2 = elevGrid
-    outAggreg = arcpy.sa.Aggregate(elevGrid2,5,'MEAN')
-    outAggreg.save(elevGrid_5m)
-    return(elevGrid_5m)
+
+    # Aggregate the raster to 5m x 5m
+    outAggreg = arcpy.sa.Aggregate(elevGrid2, 5, 'MEAN')
+    outAggreg.save(elevGrid+'_5m')
+    print('OUTPUT: {} at 5x5 resolution.'.format(os.path.basename(elevGrid+'_5m')))
+    return(elevGrid+'_5m')
 
 def RemoveTransectsOutsideBounds(trans, barrierBoundary, distance=200):
     # Delete transects not within 200 m of the study area.
@@ -456,19 +468,20 @@ def SpatialSort(in_fc, out_fc, sort_corner='LL', reverse_order=False, startcount
                 cursor.updateRow([row[0],startcount+row[0]])
     return out_fc, rowcount
 
-def SortTransectPrep(spatialref, newfields = ['sort', 'sort_corn']):
+def SortTransectPrep(spatialref):
     multi_sort = input("Do we need to sort the transects in batches to preserve the order? (y/n) ")
     sort_lines = 'sort_lines'
     if multi_sort == 'y':
-        sort_lines = arcpy.CreateFeatureclass_management(arcpy.env.scratchGDB, sort_lines, "POLYLINE", spatial_reference=spatialref)
-        arcpy.AddField_management(sort_lines, newfields[0], 'SHORT', field_precision=2)
-        arcpy.AddField_management(sort_lines, newfields[1], 'TEXT', field_length=2)
-        print("MANUALLY: Add features to sort_lines. Indicate the order of use in 'sort' and the sort corner in 'sort_corn'.")
+        arcpy.CreateFeatureclass_management(arcpy.env.scratchGDB, sort_lines, "POLYLINE", spatial_reference=spatialref)
+        arcpy.AddField_management(sort_lines, 'sort', 'SHORT', field_precision=2)
+        arcpy.AddField_management(sort_lines,'sort_corn', 'TEXT', field_length=2)
+        arcpy.AddField_management(sort_lines, 'reverse', 'TEXT', field_length=1)
+        print("MANUALLY: Add features to sort_lines. Indicate the order of use in 'sort', the sort corner in 'sort_corn', and the direction in 'reverse'.")
     else:
         sort_lines = []
         # Corner from which to start sorting, LL = lower left, etc.
         sort_corner = input("Sort corner (LL, LR, UL, UR): ")
-    return(sort_lines)
+    return(os.path.join(arcpy.env.scratchGDB, 'sort_lines'))
 
 def SortTransectsFromSortLines(in_trans, out_trans, sort_lines=[], tID_fld='sort_ID', sort_corner='LL', verbose=True):
     """
