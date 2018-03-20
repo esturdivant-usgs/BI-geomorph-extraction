@@ -281,7 +281,7 @@ def ProcessDEM(elevGrid, utmSR):
     outAggreg = arcpy.sa.Aggregate(elevGrid2, 5, 'MEAN')
     outAggreg.save(elevGrid+'_5m')
     print('OUTPUT: {} at 5x5 resolution.'.format(os.path.basename(elevGrid+'_5m')))
-    return(elevGrid_5m)
+    return(elevGrid+'_5m')
 
 def RemoveTransectsOutsideBounds(trans, barrierBoundary, distance=200):
     # Delete transects not within 200 m of the study area.
