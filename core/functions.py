@@ -253,10 +253,8 @@ def plot_island_profile(ax, pts_set, MHW, MTL):
     # #ax.axis('scaled')
     ax.set_xlim([xllim, xulim])
     ax.set_ylim([yllim, yulim])
-    # ax.axhline(y=MTL, ls='dotted', color='black')
     ax.axhspan(ymin=-0.5, ymax=MTL, xmin=xllim, xmax=xulim, alpha=0.2, color='blue')
     plt.annotate('MTL', xy=(-tran.WidthFull*0.02, MTL-0.15), color='blue')
-    # ax.axhline(y=MHW, ls='dotted', color='black')
     ax.axhspan(ymin=-0.5, ymax=MHW, xmin=xllim, xmax=xulim, alpha=0.2, color='blue')
     plt.annotate('MHW', xy=(-tran.WidthFull*0.02, MHW-0.15), color='blue', alpha=0.7)
 
