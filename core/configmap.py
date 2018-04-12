@@ -38,7 +38,7 @@ sitemap = {
     'CoastGuard':{'region': 'Massachusetts', 'site': 'CoastGuard',
                     'code': 'cg',
                     'MHW':0.98, 'MLW':-1.1,
-                    'id_init_val':None,
+                    'id_init_val':70000,
                     'morph_state': 22},
     'Forsythe':{'region': 'NewJersey', 'site': 'Forsythe',
                     'code': 'ebf',
@@ -71,7 +71,7 @@ cell_size = 5                            # Cell size for raster outputs
 pt2trans_disttolerance = 25              # Maximum distance between transect and point for assigning values; originally 10 m
 
 ########### Field names ##########################
-trans_flds = ['sort_ID','TRANSORDER', 'TRANSECTID',
+trans_flds = ['sort_ID','TRANSORDER', 'TRANSECTID','Azimuth',
     'LRR', 'SL_x', 'SL_y', 'Bslope',
     'DL_x', 'DL_y', 'DL_z', 'DL_zMHW', 'DL_snapX','DL_snapY',
     'DH_x', 'DH_y', 'DH_z', 'DH_zMHW', 'DH_snapX','DH_snapY',
@@ -92,7 +92,7 @@ sorted_pt_flds = ['SplitSort', 'seg_x', 'seg_y',
     'Dist_Seg', 'Dist_MHWbay', 'DistSegDH', 'DistSegDL', 'DistSegArm',
     'ptZ', 'ptSlp', 'ptZmhw',
     'GeoSet', 'SubType', 'VegDens', 'VegType',
-    'sort_ID','TRANSORDER', 'TRANSECTID', 'DD_ID',
+    'sort_ID','TRANSORDER', 'TRANSECTID', 'DD_ID', 'Azimuth',
     'LRR', 'SL_x', 'SL_y', 'Bslope',
     'DL_x', 'DL_y', 'DL_z', 'DL_zmhw', 'DL_snapX','DL_snapY',
     'DH_x', 'DH_y', 'DH_z', 'DH_zmhw', 'DH_snapX','DH_snapY',
