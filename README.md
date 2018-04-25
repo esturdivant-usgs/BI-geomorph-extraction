@@ -24,8 +24,6 @@ This package is used to calculate coastal geomorphology variables along shore-no
 | Vegetation Density (VegDen)         | categorical | Vegetation density (for example, sparse or moderate) that best characterizes the landscape at that point. The value is assigned from the grid cell containing the point (see Piping Plover Habitat Bayesian network below).                    |
 | Vegetation Type (VegType)           | categorical | Vegetation type (for example, herbaceous or shrub) that best characterizes the landscape at that point. The value is assigned from the grid cell containing the point (see Piping Plover Habitat Bayesian Network below).                      |
 
-![Table of variables created for geomorphology modeling](docs/table_BNvariables_geomorph.png)
-
 ## Get started
 
 ### Required software
