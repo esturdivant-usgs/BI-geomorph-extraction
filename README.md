@@ -4,7 +4,7 @@ Author: Emily Sturdivant, U.S. Geological Survey | esturdivant@usgs.gov
 ## Overview
 This package is used to calculate coastal geomorphology variables along shore-normal transects. It produces inputs for modeling geomorphology using a Bayesian Network and is a companion to a USGS report titled "Evaluating barrier island characteristics and piping plover (Charadrius melodus) habitat availability along the U.S. Atlantic coast - geospatial approaches and methodology" (Zeigler and others, in review) and various USGS data releases that have been or will be published (e.g. Gutierrez and others, in review). For more detail, please refer to the report by Zeigler and others. 
 
-![Table of variables created for geomorphology modeling](docs/table_BNvariables_geomorph.pdf)
+![Table of variables created for geomorphology modeling](docs/table_BNvariables_geomorph.png)
 
 ## Get started
 
