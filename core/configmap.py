@@ -38,7 +38,7 @@ sitemap = {
     'CoastGuard':{'region': 'Massachusetts', 'site': 'CoastGuard',
                     'code': 'cg',
                     'MHW':0.98, 'MLW':-1.1,
-                    'id_init_val':None,
+                    'id_init_val':50000,
                     'morph_state': 22},
     'Forsythe':{'region': 'NewJersey', 'site': 'Forsythe',
                     'code': 'ebf',
