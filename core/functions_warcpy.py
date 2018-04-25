@@ -1133,6 +1133,7 @@ def calc_BeachWidth_fill(in_trans, trans_df, maxDH, tID_fld='sort_ID', MHW='', f
     trans_df = fun.join_columns_id_check(trans_df, bw_df, tID_fld)
     if nan_input: # restore nan values
         trans_df.replace(fill, np.nan, inplace=True)
+    print("Fields uBW and uBH populated with beach width and beach height.")
     return(trans_df)
 
 """
@@ -1147,8 +1148,7 @@ def calc_IslandWidths(in_trans, barrierBoundary, out_clipped='clip2island', tID_
     # WidthPart - spot-checking verifies the results, but it should additionally include a check to ensure that the first transect part encountered intersects the shoreline
     print('Getting the width along each transect of the oceanside land (WidthPart)...')
     out_clipsingle = out_clipped + '_singlepart'
-    if not arcpy.Exists(out_clipsingle):
-        arcpy.MultipartToSinglepart_management(out_clipped, out_clipsingle)
+    arcpy.MultipartToSinglepart_management(out_clipped, out_clipsingle)
     clipsingles = FCtoDF(out_clipsingle, dffields = ['SHAPE@LENGTH', tID_fld], length=True)
     widthpart = clipsingles.groupby(tID_fld)['SHAPE@LENGTH'].first()
     widthpart.name = 'WidthPart'
@@ -1273,6 +1273,7 @@ def DFtoFC(df, out_fc, spatial_ref, id_fld='', xy=["seg_x", "seg_y"], keep_field
     # Create FC from DF; default only copies X,Y,ID fields
     # using too many fields with a large dataset will fail
     # Make sure name of index is not also a column name
+    print("... converting dataframe to array... ")
     if df.index.name in df.columns:
         df.index.name = 'index'
     # Convert DF to array
@@ -1296,9 +1297,11 @@ def DFtoFC(df, out_fc, spatial_ref, id_fld='', xy=["seg_x", "seg_y"], keep_field
              .astype('f8').fillna(fill).to_records())
         print('Encountered ValueError while converting dataframe to array so set index name to "index" before running.' )
     # Convert array to FC
+    print("... converting array to feature class... ")
     # out_fc = os.path.join(arcpy.env.scratchGDB, os.path.basename(out_fc)) # set out_fc path
     arcpy.Delete_management(out_fc) # delete if already exists
     arcpy.da.NumPyArrayToFeatureClass(arr, out_fc, xy, spatial_ref)
+    print()
     return(out_fc)
 
 def DFtoFC_large(pts_df, out_fc, spatial_ref, df_id='SplitSort', xy=["seg_x", "seg_y"], fill=-99999, verbose=True):

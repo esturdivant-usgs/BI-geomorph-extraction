@@ -5,6 +5,11 @@ They should not need to be changed except to include more site value mappings.
 They do not require any input values.
 """
 sitemap = {
+    'Cobb':{'region': 'Delmarva', 'site': 'Cobb',
+                    'code': 'cobb',
+                    'MHW':0.34, 'MLW':-0.56,
+                    'id_init_val':160000,
+                    'morph_state': 12},
     'Cedar':{'region': 'Delmarva', 'site': 'Cedar',
                     'code': 'cei',
                     'MHW':0.34, 'MLW':-0.56,
