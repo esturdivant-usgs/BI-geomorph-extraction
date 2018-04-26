@@ -21,8 +21,11 @@ import core.functions as fun
 """
 # General use functions
 """
-def SetInputFCname(inFCname, varname='', system_ext=True):
-    # Look for input feature class name in workspace and prompt for different name if not found.
+def SetInputFCname(inFCname: 'name of input feature class',
+                   varname: 'name of variable' = '',
+                   system_ext: 'raise SystemExit if file not found?' = True) -> str:
+    """Look for input feature class name in workspace and
+    prompt for different name if not found."""
     if len(varname) < 1:
         varname = inFCname
     if arcpy.Exists(inFCname):
@@ -44,13 +47,13 @@ def SetInputFCname(inFCname, varname='', system_ext=True):
                 raise SystemExit
     return(inFCname)
 
-def unique_values(table, field):
-    # return sorted unique values in field
+def unique_values(table, field: str):
+    """return sorted unique values in field"""
     data = arcpy.da.TableToNumPyArray(table, [field])
-    return numpy.unique(data[field])
+    return(numpy.unique(data[field]))
 
-def CheckValues(inFeatureClass,fieldName,expectedRange):
-    # Check for anomalous values in FC
+def CheckValues(inFeatureClass: str, fieldName: str, expectedRange) -> tuple:
+    """Check for anomalous values in FC"""
     lowrows = list()
     highrows = list()
     expectedRange.sort() # make sure pair is [low,high]
@@ -65,9 +68,10 @@ def CheckValues(inFeatureClass,fieldName,expectedRange):
             else:
                 pass
             cursor.updateRow(row)
-    return lowrows,highrows
+    return(lowrows, highrows)
 
-def fieldsAbsent(in_fc, fieldnames):
+def fieldsAbsent(in_fc: str, fieldnames: str):
+    """Find missing fields in feature class. Return False if none missing."""
     try:
         fieldList = arcpy.ListFields(os.path.join(arcpy.env.workspace,in_fc))
     except:
@@ -79,37 +83,40 @@ def fieldsAbsent(in_fc, fieldnames):
             mfields.append(fn)
     if not len(mfields):
         print("All expected fields present in file '{}'.".format(os.path.basename(in_fc)))
-        return False
+        return(False)
     else:
-        print("Fields '{}' not present in transects file '{}'.".format(
+        print("Fields '{}' not present in file '{}'.".format(
               mfields, os.path.basename(in_fc)))
-        return mfields
+        return(mfields)
 
-def fieldExists(in_fc, fieldname):
-    # Check whether field exists in feature class
+def fieldExists(in_fc: str, fieldname: str) -> bool:
+    """ Check whether field exists in feature class."""
     try:
         fieldList = arcpy.ListFields(os.path.join(arcpy.env.workspace, in_fc))
     except:
         fieldList = arcpy.ListFields(in_fc)
     for f in fieldList:
         if f.name.lower() == fieldname.lower():
-            return True
-    return False
+            return(True)
+    return(False)
 
-def CopyAndWipeFC(in_fc, out_fc, preserveflds=[]):
-    # Make copy of feature class with all Null. Preserves values in necessary and/or indicated fields.
+def CopyAndWipeFC(in_fc: str, out_fc: str, preserveflds: list = []) -> str:
+    """Make copy of feature class with all field values Null.
+    Preserves values in necessary fields and those listed in preserveflds."""
     out_fc = os.path.join(arcpy.env.scratchGDB, out_fc)
     arcpy.CopyFeatures_management(in_fc, out_fc)
-    # Replace values of all new transects
+    # list all fields that are not required in the FC (e.g. OID@) and not in preserveflds
     fldsToWipe = [f.name for f in arcpy.ListFields(out_fc)
-                  if not f.required and not f.name in preserveflds] # list all fields that are not required in the FC (e.g. OID@)
+                  if not f.required and not f.name in preserveflds]
+    # Set value to None
     with arcpy.da.UpdateCursor(out_fc, fldsToWipe) as cursor:
         for row in cursor:
             cursor.updateRow([None] * len(row))
-    return out_fc
+    return(out_fc)
 
-def AddNewFields(fc,fieldlist,fieldtype="DOUBLE", verbose=True):
-    # Add fields to FC if they do not already exist. New fields must all be the same type.
+def AddNewFields(fc: str, fieldlist: list, fieldtype: str ="DOUBLE", verbose: bool = True) -> str:
+    """Add fields to FC if they do not already exist.
+    New fields must all be the same type."""
     # print('Adding fields to {} as type {} if they do not already exist.'.format(out_fc, fieldtype))
     def AddNewField(fc, newfname, fieldtype, verbose):
         # Add single new field
@@ -117,7 +124,7 @@ def AddNewFields(fc,fieldlist,fieldtype="DOUBLE", verbose=True):
             arcpy.AddField_management(fc, newfname, fieldtype)
             if verbose:
                 print('Added {} field to {}'.format(newfname, os.path.basename(fc)))
-        return fc
+        return(fc)
     # Execute for multiple fields
     if type(fieldlist) is str:
         AddNewField(fc, fieldlist, fieldtype, verbose)
@@ -126,18 +133,21 @@ def AddNewFields(fc,fieldlist,fieldtype="DOUBLE", verbose=True):
             AddNewField(fc, newfname, fieldtype, verbose)
     else:
         print("fieldlist accepts string, list, or tuple of field names. {} type not accepted.".format(type(fieldlist)))
-    return fc
+    return(fc)
 
-def DeleteExtraFields(inTable, keepfields=[]):
-    fldsToDelete = [x.name for x in arcpy.ListFields(inTable) if not x.required] # list all fields that are not required in the FC (e.g. OID@)
+def DeleteExtraFields(inTable: str, keepfields=[]) -> str:
+    """Delete all fields from inTable that are not required."""
+    # list all fields that are not required in the FC (e.g. OID@)
+    fldsToDelete = [x.name for x in arcpy.ListFields(inTable) if not x.required]
     if keepfields:
-        [fldsToDelete.remove(f) for f in keepfields if f in fldsToDelete] # remove keepfields from fldsToDelete
+        # remove keepfields from fldsToDelete
+        [fldsToDelete.remove(f) for f in keepfields if f in fldsToDelete]
     if len(fldsToDelete):
         arcpy.DeleteField_management(inTable, fldsToDelete)
-    return inTable
+    return(inTable)
 
-def DeleteTempFiles(wildcard='*_temp'):
-    # Delete files of type FC, Dataset, or Table ending in '_temp' fromw workspace
+def DeleteTempFiles(wildcard: str ='*_temp') -> list:
+    """Delete files matching wildcard of type FC, Dataset, or Table from workspace."""
     templist = []
     try:
         templist = templist + arcpy.ListFeatureClasses(wildcard)
@@ -153,25 +163,25 @@ def DeleteTempFiles(wildcard='*_temp'):
         pass
     for tempfile in templist:
         arcpy.Delete_management(tempfile)
-    return templist
+    return(templist)
 
-def RemoveLayerFromMXD(lyrname):
-    # accepts wildcards
+def RemoveLayerFromMXD(lyrname: str) -> bool:
+    """Remove layer matching string or wildcard from MXD."""
     try:
         mxd = arcpy.mapping.MapDocument('CURRENT')
         for df in arcpy.mapping.ListDataFrames(mxd):
             for lyr in arcpy.mapping.ListLayers(mxd, lyrname, df):
                 arcpy.mapping.RemoveLayer(df, lyr)
-                return True
+                return(True)
             else:
-                return True
+                return(True)
     except:
         print("Layer '{}' could not be removed from map document.".format(lyrname))
-        return False
+        return(False)
 
-def ReplaceFields(fc, newoldfields, fieldtype='DOUBLE'):
-    # Use tokens to save geometry properties as attributes
-    # E.g. newoldfields={'LENGTH':'SHAPE@LENGTH'}
+def ReplaceFields(fc: str, newoldfields: dict, fieldtype: str ='DOUBLE') -> str:
+    """Use tokens to save geometry properties as attributes
+    E.g. newoldfields={'LENGTH':'SHAPE@LENGTH'}"""
     spatial_ref = arcpy.Describe(fc).spatialReference
     for (new, old) in newoldfields.items():
         if not fieldExists(fc, new): # Add field if it doesn't already exist
@@ -186,12 +196,12 @@ def ReplaceFields(fc, newoldfields, fieldtype='DOUBLE'):
             except:
                 print(arcpy.GetMessage(2))
                 pass
-    return fc
+    return(fc)
 
-def DuplicateField(fc, fld, newname, ftype=False):
-    # Copy field values into field with new name
+def DuplicateField(fc: str, fld: str, newname: str, ftype: str ='') -> str:
+    """Copy field values into field with new name"""
     # 1. get field type
-    if not ftype:
+    if len(ftype) < 1:
         flds = arcpy.ListFields(fc, fld)
         ftype = flds.type
     # 2. add new field
@@ -202,8 +212,8 @@ def DuplicateField(fc, fld, newname, ftype=False):
             cursor.updateRow([row[0], row[0]])
     return(fc)
 
-def ReplaceValueInFC(fc, oldvalue=-99999, newvalue=None, fields="*"):
-    # Replace oldvalue with newvalue in fields in fc
+def ReplaceValueInFC(fc: str, oldvalue=-99999, newvalue=None, fields="*") -> str:
+    """Replace oldvalue with newvalue in fields in fc"""
     # First check field types
     with arcpy.da.UpdateCursor(fc, fields) as cursor:
         fieldindex = range(len(cursor.fields))
@@ -212,10 +222,11 @@ def ReplaceValueInFC(fc, oldvalue=-99999, newvalue=None, fields="*"):
                 if row[i] == oldvalue:
                     row[i] = newvalue
             cursor.updateRow(row)
-    return fc
+    return(fc)
 
-def CopyFCandReplaceValues(fc, oldvalue=-99999, newvalue=None, fields="*", out_fc='', out_dir='', verbose=True):
-    # Replace oldvalue with newvalue in fields in fc
+def CopyFCandReplaceValues(fc, oldvalue=-99999, newvalue=None,
+                           fields="*", out_fc='', out_dir='', verbose=True):
+    """Replace oldvalue with newvalue in fields in fc"""
     # First check field types
     if len(out_fc) > 0:
         if len(out_dir) < 1:
@@ -225,23 +236,22 @@ def CopyFCandReplaceValues(fc, oldvalue=-99999, newvalue=None, fields="*", out_f
     fc = ReplaceValueInFC(fc, oldvalue, newvalue, fields)
     if verbose:
         print("OUTPUT: {}".format(os.path.basename(fc)))
-    return fc
+    return(fc)
 
-def ReProject(fc, newfc, proj_code=26918, verbose=True):
-    # If spatial reference does not match desired, project in correct SR.
+def ReProject(fc: str, newfc: str, proj_code: int =26918, verbose: bool=True) -> str:
+    """If spatial reference does not match desired, project in correct SR."""
     if not arcpy.Describe(fc).spatialReference.factoryCode == proj_code: # NAD83 UTM18N
         arcpy.Project_management(fc, newfc, arcpy.SpatialReference(proj_code))
         if verbose:
             print("The projection of {} was changed. The new file is {}.".format(os.path.basename(fc), os.path.basename(newfc)))
     else:
         newfc = fc
-
-    # Print message
     return(newfc)
 
-def DeleteFeaturesByValue(fc,fields=[], deletevalue=-99999):
+def DeleteFeaturesByValue(fc: str, fields=[], deletevalue=-99999) -> str:
+    """Delete features matching deletevalue."""
     # If the fields argument is blank, defaults to use all fields.
-    if not len(fields):
+    if len(fields) < 1:
         fs = arcpy.ListFields(fc)
         for f in fs:
             fields.append(f.name)
@@ -251,13 +261,13 @@ def DeleteFeaturesByValue(fc,fields=[], deletevalue=-99999):
             for i in range(len(fields)):
                 if row[i] == deletevalue:
                     cursor.deleteRow()
-    return fc
+    return(fc)
 
 """
 Pre-processing
 """
 # Part 1 functions
-def ProcessDEM(elevGrid, utmSR):
+def ProcessDEM(elevGrid: str, utmSR) -> str:
     """
     Check that raster is 5x5 resolution and in correct projection.
     """
@@ -283,8 +293,8 @@ def ProcessDEM(elevGrid, utmSR):
     print('OUTPUT: {} at 5x5 resolution.'.format(os.path.basename(elevGrid+'_5m')))
     return(elevGrid+'_5m')
 
-def RemoveTransectsOutsideBounds(trans, barrierBoundary, distance=200):
-    # Delete transects not within 200 m of the study area.
+def RemoveTransectsOutsideBounds(trans: str, barrierBoundary: str, distance: int =200) -> str:
+    """Delete transects not within distance (default: 200 m) of the study area."""
     for row in arcpy.da.SearchCursor(barrierBoundary, ['SHAPE@']):
         geom = row[0]
         with arcpy.da.UpdateCursor(trans, ['SHAPE@']) as cursor:
@@ -294,7 +304,8 @@ def RemoveTransectsOutsideBounds(trans, barrierBoundary, distance=200):
                     cursor.deleteRow()
     return(trans)
 
-def ExtendLine(fc, new_fc, distance, proj_code=26918, verbose=True):
+def ExtendLine(fc: str, new_fc: str, distance: int, proj_code: int=26918, verbose: bool=True) -> str:
+    """Extend all lines in FC by specified distance. Save in new FC."""
     # From GIS stack exchange http://gis.stackexchange.com/questions/71645/a-tool-or-way-to-extend-line-by-specified-distance
     # layer must have map projection
     def accumulate(iterable):
@@ -316,7 +327,7 @@ def ExtendLine(fc, new_fc, distance, proj_code=26918, verbose=True):
         linelen = np.hypot(dx, dy) # distance between xy1 and xy2
         x0 = x1 - dx/linelen * dist
         y0 = y1 - dy/linelen * dist
-        return x0, y0
+        return(x0, y0)
 
     # Project transects to UTM
     if len(os.path.split(new_fc)) > 1:
@@ -351,10 +362,7 @@ def ExtendLine(fc, new_fc, distance, proj_code=26918, verbose=True):
                     row[0] = newvert[j]
                     j+=1
                     cursor.updateRow(row) #FIXME: If the FC was projected as part of the function, returns RuntimeError: "The spatial index grid size is invalid."
-        if verbose:
-            print("Transects extended.")
-        return(new_fc)
-    elif distance < 0:
+    else:
         # Grab the first two vertices of each feature (they will either be listed in vertcounts or one ahead of one in vertcounts)
         firstpoint = [point for x, point in enumerate(vert) if x in vertcounts or x-1 in vertcounts]
         # Obtain list of tuples of new end coordinates by converting flat list of
@@ -367,13 +375,14 @@ def ExtendLine(fc, new_fc, distance, proj_code=26918, verbose=True):
                     row[0] = newvert[j]
                     j+=1
                     cursor.updateRow(row) #FIXME: If the FC was projected as part of the function, returns RuntimeError: "The spatial index grid size is invalid."
-        if verbose:
-            print("Transects extended.")
-        return(new_fc)
+    if verbose:
+        print("Transects extended.")
+    return(new_fc)
 
 def ExtendLine_backward(fc, new_fc, distance, proj_code=26918, verbose=True):
-        # From GIS stack exchange http://gis.stackexchange.com/questions/71645/a-tool-or-way-to-extend-line-by-specified-distance
-        # layer must have map projection
+    """Extend lines in FC in inverse direction. Save in new FC."""
+    # From GIS stack exchange http://gis.stackexchange.com/questions/71645/a-tool-or-way-to-extend-line-by-specified-distance
+    # layer must have map projection
     def accumulate(iterable):
         # accumulate([1,2,3,4,5]) --> 1 3 6 10 15
         # (Equivalent to itertools.accumulate() - isn't in Python 2.7)
@@ -383,7 +392,6 @@ def ExtendLine_backward(fc, new_fc, distance, proj_code=26918, verbose=True):
         for element in it:
             total = add(total, element)
             yield total
-
 
     # Project transects to UTM
     if len(os.path.split(new_fc)) > 1:
@@ -422,6 +430,8 @@ def ExtendLine_backward(fc, new_fc, distance, proj_code=26918, verbose=True):
     return(new_fc)
 
 def RemoveDuplicates(trans_presort, orig_xtnd, verbose=True):
+    """Remove each feature from trans_presort that is an exact
+    duplicate geometry of a feature in orig_xtnd."""
     # 2. Remove orig transects from manually created transects
     # If any of the original extended transects (with null values) are still present in trans_presort, delete them.
     for row in arcpy.da.SearchCursor(orig_xtnd, ['SHAPE@']):
@@ -437,21 +447,9 @@ def RemoveDuplicates(trans_presort, orig_xtnd, verbose=True):
         print("{} ready for sorting. It should be in your scratch geodatabase.".format(os.path.basename(trans_presort)))
     return(trans_presort)
 
-def PrepTransects_part2_old(trans_presort, LTextended, barrierBoundary=''):
-    # 2. Remove orig transects from manually created transects
-    # If any of the original extended transects (with null values) are still present in trans_presort, delete them.
-    arcpy.SelectLayerByLocation_management(trans_presort, "ARE_IDENTICAL_TO", LTextended)
-    if int(arcpy.GetCount_management(trans_presort)[0]):
-        # if old trans in new trans, delete them
-        arcpy.DeleteFeatures_management(trans_presort)
-    # 3. Append original extended transects (with values) to the new transects
-    if len(barrierBoundary)>0:
-        arcpy.SelectLayerByLocation_management(LTextended, "INTERSECT", barrierBoundary)
-    arcpy.Append_management(LTextended, trans_presort)
-    return(trans_presort)
-
-def SpatialSort(in_fc, out_fc, sort_corner='LL', reverse_order=False, startcount=0, sortfield='sort_ID'):
-    # Sort transects and assign values to new sortfield; option to assign values in reverse order
+def SpatialSort(in_fc: str, out_fc: str, sort_corner: str='LL',
+    reverse_order: bool =False, startcount: int=0, sortfield: str='sort_ID'):
+    """Sort transects and assign values to new sortfield; option to assign values in reverse order"""
     arcpy.Sort_management(in_fc,out_fc,[['Shape','ASCENDING']],sort_corner) # Sort from lower left - this
     try:
         arcpy.AddField_management(out_fc,sortfield,'SHORT')
@@ -466,9 +464,10 @@ def SpatialSort(in_fc, out_fc, sort_corner='LL', reverse_order=False, startcount
         with arcpy.da.UpdateCursor(out_fc,['OID@',sortfield]) as cursor:
             for row in cursor:
                 cursor.updateRow([row[0],startcount+row[0]])
-    return out_fc, rowcount
+    return(out_fc, rowcount)
 
 def SortTransectPrep(spatialref):
+    """Prepare to sort transects by conditionally creating a sort_lines FC or setting the sort corner."""
     multi_sort = input("Do we need to sort the transects in batches to preserve the order? (y/n) ")
     sort_lines = 'sort_lines'
     if multi_sort == 'y':
@@ -540,31 +539,8 @@ def SortTransectsFromSortLines(in_trans, out_trans, sort_lines=[], tID_fld='sort
             cursor.updateRow([row[0], row[0]])
     return(out_trans)
 
-def SortTransectsFromSortLines_old(in_fc, out_fc, sort_lines=[], sortfield='sort_ID', sort_corner='LL'):
-    # Alternative to SpatialSort() when sorting must be done in spatial groups
-    try:
-        # add the transect ID field to the transects if it doesn't already exist.
-        arcpy.AddField_management(in_fc, sortfield, 'SHORT')
-    except:
-        pass
-    if not len(sort_lines):
-        # If sort_lines is blank ([]),
-        base_fc, ct = SortTransectsByFeature(in_fc, 0, sort_lines, [1, sort_corner], sortfield)
-    else:
-        # Sort the sort lines by the desginated field.
-        sort_lines2 = sort_lines+'_sorted'
-        arcpy.Sort_management(sort_lines, sort_lines2, [['sort', 'ASCENDING']])
-        # Convert the file to a numpy array to access the values.
-        sort_lines_arr = arcpy.da.FeatureClassToNumPyArray(sort_lines2, ['sort', 'sort_corn'])
-        base_fc, ct = SortTransectsByFeature(in_fc, 0, sort_lines2, sort_lines_arr[0])
-        for row in sort_lines_arr[1:]:
-            next_fc, ct = SortTransectsByFeature(in_fc, ct, sort_lines2, row)
-            arcpy.Append_management(next_fc, base_fc) # Append each new FC to the base.
-    # arcpy.FeatureClassToFeatureClass_conversion(base_fc, arcpy.env.workspace, out_fc)
-    SetStartValue(base_fc, out_fc, sortfield, start=1)
-    return(out_fc)
-
 def SortTransectsByFeature(in_fc, new_ct, sort_lines=[], sortrow=[0, 'LL'], sortfield='sort_ID'):
+    """Sort transects by one of the lines in sort_lines."""
     out_fc = 'trans_sort{}_temp'.format(new_ct)
     arcpy.Delete_management(os.path.join(arcpy.env.workspace, out_fc)) # delete if it already exists
     if len(sort_lines):
@@ -578,7 +554,8 @@ def SortTransectsByFeature(in_fc, new_ct, sort_lines=[], sortrow=[0, 'LL'], sort
             cursor.updateRow([row[0], row[0]+new_ct])
     return(out_fc, ct)
 
-def SetStartValue(trans_sort_1, extendedTrans, tID_fld, start=1):
+def SetStartValue(trans_sort_1: str, extendedTrans: str, tID_fld: str, start: int=1):
+    """Sort group of transects and set start value to that indicated by start arg."""
     # Make sure tID_fld counts from 1
     # Work with duplicate of original transects to preserve them
     arcpy.Sort_management(trans_sort_1, extendedTrans, tID_fld)
@@ -595,7 +572,12 @@ def SetStartValue(trans_sort_1, extendedTrans, tID_fld, start=1):
         print("First value was already {}.".format(start))
     return
 
-def CreateShoreBetweenInlets(shore_delineator, inletLines, out_line, ShorelinePts, proj_code=26918, SA_bounds='', verbose=True):
+def CreateShoreBetweenInlets(shore_delineator: str, inletLines: str,
+    out_line: str, ShorelinePts: str, proj_code: int=26918, SA_bounds: str='',
+    verbose: bool=True):
+    """Create ShoreBetweenInlets line = oceanside shoreline between inlets;
+    Generated from shoreline polygon, inlet lines, and SA bounds;
+    Used to produce shoreline points and measure distance to inlet."""
     # initialize temp layer names
     split = os.path.join(arcpy.env.scratchGDB, 'shoreline_split')
     # Ready layers for processing
@@ -630,7 +612,9 @@ def CreateShoreBetweenInlets(shore_delineator, inletLines, out_line, ShorelinePt
     arcpy.Dissolve_management(split+'_join', out_line, [[dissolve_fld]], multi_part="SINGLE_PART")
     return out_line
 
-def RasterToLandPerimeter(in_raster, out_polygon, threshold, agg_dist='30 METERS', min_area='300 SquareMeters', min_hole_sz='300 SquareMeters', manualadditions=None):
+def RasterToLandPerimeter(in_raster, out_polygon, threshold,
+    agg_dist='30 METERS', min_area='300 SquareMeters',
+    min_hole_sz='300 SquareMeters', manualadditions=None):
     """
     Raster to Polygon: DEM => Reclass => MHW line
     """
@@ -648,7 +632,8 @@ def RasterToLandPerimeter(in_raster, out_polygon, threshold, agg_dist='30 METERS
         arcpy.AggregatePolygons_cartography(r2p, out_polygon, agg_dist, min_area, min_hole_sz)
     return(out_polygon)
 
-def CombineShorelinePolygons(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly, SA_bounds='', verbose=True):
+def CombineShorelinePolygons(bndMTL: str, bndMHW: str, inletLines: str,
+    ShorelinePts: str, bndpoly: str, SA_bounds: str='', verbose: bool=True):
     """
     Use MTL and MHW contour polygons to create shoreline polygon.
     'Shoreline' = MHW on oceanside and MTL on bayside
@@ -689,6 +674,8 @@ def CombineShorelinePolygons(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly, 
     return(bndpoly)
 
 def DEMtoFullShorelinePoly(elevGrid, MTL, MHW, inletLines, ShorelinePts, SA_bounds=''):
+    """Delinate the full shoreline polygon from the DEM.
+    Creates the MTL and MHW contour polygons and then combines them."""
     bndMTL = 'bndpoly_mtl'
     bndMHW = 'bndpoly_mhw'
     bndpoly = 'bndpoly'
@@ -702,6 +689,8 @@ def DEMtoFullShorelinePoly(elevGrid, MTL, MHW, inletLines, ShorelinePts, SA_boun
     return(bndpoly)
 
 def NewBNDpoly(old_boundary, modifying_feature, new_bndpoly='boundary_poly', vertexdist='25 METERS', snapdist='25 METERS', verbose=True):
+    """Snaps the boundary polygon to the shoreline points anywhere they don't
+    already match and as long as as they are within 25 m of each other."""
     # boundary = input line or polygon of boundary to be modified by newline
     typeFC = arcpy.Describe(old_boundary).shapeType
     if typeFC == "Line" or typeFC =='Polyline':
@@ -727,6 +716,8 @@ def NewBNDpoly(old_boundary, modifying_feature, new_bndpoly='boundary_poly', ver
     return new_bndpoly # string name of new polygon
 
 def JoinFields(targetfc, sourcefile, dest2src_fields, joinfields=['sort_ID']):
+    """Join fields from sourcefile to targetfc.
+    Join on joinfields. Use fields in dest2src_fields dictionary or list/tuple."""
     # Add fields from sourcefile to targetfc; alter
     # If dest2src_fields is a list/tuple instead of dictionary, convert.
     if type(dest2src_fields) is list or type(dest2src_fields) is tuple:
@@ -828,6 +819,13 @@ def find_similar_fields(prefix, oldPts, fields=[], verbose=True):
     return(fdict)
 
 def ArmorLineToTrans_PD(in_trans, armorLines, sl2trans_df, tID_fld, proj_code, elevGrid_5m):
+    """Get position and elevation of armoring lines at each transect.
+
+    __Arm_x__, __Arm_y__, and __Arm_z__ are the easting, northing, and elevation, respectively, where an artificial structure crosses the transect in the vicinity of the beach. These features are meant to supplement the dune toe data set by providing an upper limit to the beach in areas where dune toe extraction was confounded by the presence of an artificial structure. Values are populated for each transect as follows:
+
+    1. Get the positions of intersection between the digitized armoring lines and the transects (Intersect tool from the Overlay toolset);
+    2. Extract the elevation value at each intersection point from the DEM (Extract Multi Values to Points tool from Spatial Analyst);
+    """
     #FIXME: How do I know which point will be encountered first? - don't want those in back to take the place of
     arm2trans = os.path.join(arcpy.env.scratchGDB, "arm2trans")
     flds = ['Arm_x', 'Arm_y', 'Arm_z']
@@ -880,7 +878,7 @@ def geom_shore2trans(transect, tID, shoreline, in_pts, slp_fld, proximity=25):
     return(slxpt.X, slxpt.Y, slp)
 
 def add_shorelinePts2Trans(in_trans, in_pts, shoreline, tID_fld='sort_ID', proximity=25, verbose=True):
-    """
+    """Get positions of shoreline at each transect.
     """
     start = time.clock()
     if verbose:
@@ -948,8 +946,6 @@ def geom_dune2trans(trow, out_df, in_pts, z_fld, prefix, proximity=25):
 def find_ClosestPt2Trans_snap(in_trans, dh_pts, dl_pts, trans_df, tID_fld='sort_ID', proximity=25, verbose=True, fill=-99999):
     """
     Find the nearest dune crest/toe point to the transects.
-
-
     """
     # 12 minutes for FireIsland
     start = time.clock()
@@ -999,9 +995,15 @@ Dist2Inlet
 """
 def measure_Dist2Inlet(shoreline, in_trans, inletLines, tID_fld='sort_ID'):
     """
-    # measure distance along oceanside shore from transect to inlet.
-    # Uses three SearchCursors (arcpy's data access module).
-    # Stores values in new data frame.
+    Measure distance along oceanside shore from transect to inlet.
+    Uses three SearchCursors (arcpy's data access module).
+    Stores values in new data frame.
+
+    Distance to nearest tidal inlet (__Dist2Inlet__) is computed as alongshore distance of each sampling transect from the nearest tidal inlet. This distance includes changes in the path of the shoreline instead of simply a Euclidean distance and reflects sediment transport pathways. It is measured using the oceanside shoreline between inlets (ShoreBetweenInlets).
+
+    Note that the ShoreBetweenInlets feature class must be both 'dissolved' and 'singlepart' so that each feature represents one-and-only-one shoreline that runs the entire distance between two inlets or equivalent. If the shoreline is bounded on both sides by an inlet, measure the distance to both and assign the minimum distance of the two. If the shoreline meets only one inlet (meaning the study area ends before the island ends), use the distance to the only inlet.
+
+    The process uses the cut, disjoint, and length geometry methods and properties in ArcPy data access module. The function measure_Dist2Inlet() prints a warning when the difference in Dist2Inlet between two consecutive transects is greater than 300.
     """
     # Initialize
     start = time.clock()
@@ -1055,6 +1057,18 @@ def measure_Dist2Inlet(shoreline, in_trans, inletLines, tID_fld='sort_ID'):
 Beach width
 """
 def calc_BeachWidth_fill(in_trans, trans_df, maxDH, tID_fld='sort_ID', MHW='', fill=-99999, skip_missing_z=True):
+    """
+    Upper beach width (__uBW__) and upper beach height (__uBH__) are calculated based on the difference in position between two points: the position of MHW along the transect (__SL_x__, __SL_y__) and the dune toe position or equivalent (usually __DL_snapX__, __DL_snapY__).  In some cases, the dune toe is not appropriate to designate the "top of beach" so beach width and height are calculated from either the position of the dune toe, the dune crest, or the base of an armoring structure. The dune crest was only considered a possibility if the dune crest elevation (__DH_zMHW__) was less than or equal to `maxDH`.
+
+    They are calculated as follows:
+    2. Calculate distances from MHW to the position along the transect of the dune toe (__DistDL__), dune crest (__DistDH__), and armoring (__DistArm__).
+    2. Adjust the elevations to MHW, populating fields __DH_zmhw__, __DL_zmhw__, and __Arm_zmhw__.
+    3. Conditionally select the appropriate feature to represent "top of beach." Dune toe is prioritized. If it is not available and __DH_zmhw__ is less than or equal to maxDH, use dune crest. If neither of the dune positions satisfy the conditions and an armoring feature intersects with the transect, use the armoring position. If none of the three are possible, __uBW__ and __uBH__ will be null.
+    4. Copy the distance to shoreline and height above MHW (__Dist--__, __---zmhw__) to __uBW__ and __uBH__, respectively.
+
+    Notes:
+    - In some morphology datasets, missing elevation values at a point indicate that the point should not be used to measure beach width. In those cases, use the `skip_missing_z` argument to select whether or not to skip these points.
+    """
     # To find dlow proxy, use code written by Ben in Matlab and converted to pandas by Emily
     # Uses snapToLine() polyline geometry method from arcpy
 
@@ -1140,6 +1154,15 @@ def calc_BeachWidth_fill(in_trans, trans_df, maxDH, tID_fld='sort_ID', MHW='', f
 Widths
 """
 def calc_IslandWidths(in_trans, barrierBoundary, out_clipped='clip2island', tID_fld='sort_ID'):
+    """Clip transects, get barrier widths
+    Calculates __WidthLand__, __WidthFull__, and __WidthPart__, which measure different flavors of the cross-shore width of the barrier island. __WidthLand__ is the above-water distance between the back-barrier and seaward MHW shorelines. __WidthLand__ only includes regions of the barrier within the shoreline polygon (bndpoly_2sl) and does not extend into any of the sinuous or intervening back-barrier waterways and islands. __WidthFull__ is the total distance between the back-barrier and seaward MHW shorelines (including space occupied by waterways). __WidthPart__ is the width of only the most seaward portion of land within the shoreline.
+
+    These are calculated as follows:
+    1. Clip the transect to the full island shoreline (Clip in the Analysis toolbox);
+    2. For __WidthLand__, get the length of the multipart line segment from &quot;SHAPE@LENGTH&quot; feature class attribute. When the feature is multipart, this will include only the remaining portions of the transect;
+    3. For __WidthPart__, convert the clipped transect from multipart to singlepart and get the length of the first line segment, which should be the most seaward;
+    4. For __WidthFull__, calculate the distance between the first vertex and the last vertex of the clipped transect (Feature Class to NumPy Array with explode to points, pandas groupby, numpy hypot).
+    """
     home = arcpy.env.workspace
     out_clipped = os.path.join(arcpy.env.scratchGDB, out_clipped)
     print("Clipping the transects to the barrier island boundaries ('{}')...".format(os.path.basename(out_clipped)))
@@ -1175,6 +1198,13 @@ def calc_IslandWidths(in_trans, barrierBoundary, out_clipped='clip2island', tID_
 Format conversion
 """
 def TransectsToPointsDF(in_trans, barrierBoundary, fc_out='', tID_fld='sort_ID', step=5):
+    """Split transects into points at 5-m intervals.
+
+    The point dataset is created from the tidied transects (tidyTrans, created during pre-processing) as follows:
+    1. Clip the tidied transects (tidyTrans) to the shoreline polygon (bndpoly_2sl) , retaining only those portions of the transects that represent land.
+    2. Produce a dataframe of point positions along each transect every 5 m starting from the ocean-side shoreline. This uses the positionAlongLine geometry method accessed with a Search Cursor and saves the outputs in a new dataframe.
+    3. Create a point feature class from the dataframe.
+    """
     start = time.clock()
 
     out_clipped = os.path.join(arcpy.env.scratchGDB, 'tidytrans_clipped')
@@ -1199,7 +1229,7 @@ def TransectsToPointsDF(in_trans, barrierBoundary, fc_out='', tID_fld='sort_ID',
     return(df, fc_out)
 
 def FCtoDF(fc, xy=False, dffields=[], fill=-99999, id_fld=False, extra_fields=[], verbose=True, fid=False, explode_to_points=False, length=False):
-    # Convert FeatureClass to pandas.DataFrame with np.nan values
+    """Convert FeatureClass to pandas.DataFrame with np.nan values"""
     # 1. Convert FC to Numpy array
     if explode_to_points:
         message = 'Converting feature class vertices to array with X and Y...'
@@ -1250,6 +1280,7 @@ def FCtoDF(fc, xy=False, dffields=[], fill=-99999, id_fld=False, extra_fields=[]
     return(df)
 
 def JoinDFtoFC(df, in_fc, join_id, target_id=False, out_fc='', overwrite=True, fill=-99999, verbose=True):
+    """Join pandas dataframe to feature class."""
     if not target_id:
         target_id=join_id
     # If out_fc specified, initialize output FC with a copy of input
@@ -1270,8 +1301,8 @@ def JoinDFtoFC(df, in_fc, join_id, target_id=False, out_fc='', overwrite=True, f
     return(out_fc)
 
 def DFtoFC(df, out_fc, spatial_ref, id_fld='', xy=["seg_x", "seg_y"], keep_fields=[], fill=-99999):
-    # Create FC from DF; default only copies X,Y,ID fields
-    # using too many fields with a large dataset will fail
+    """Create FC from DF; default only copies X,Y,ID fields
+    using too many fields with a large dataset will fail"""
     # Make sure name of index is not also a column name
     print("... converting dataframe to array... ")
     if df.index.name in df.columns:
@@ -1305,7 +1336,7 @@ def DFtoFC(df, out_fc, spatial_ref, id_fld='', xy=["seg_x", "seg_y"], keep_field
     return(out_fc)
 
 def DFtoFC_large(pts_df, out_fc, spatial_ref, df_id='SplitSort', xy=["seg_x", "seg_y"], fill=-99999, verbose=True):
-    # Create FC from DF using only XY and ID; then join the DF to the new FC
+    """Create FC from DF using only XY and ID; then join the DF to the new FC"""
     start = time.clock()
     # 1. Create pts FC with only XY and ID
     if verbose:
@@ -1322,7 +1353,7 @@ def DFtoFC_large(pts_df, out_fc, spatial_ref, df_id='SplitSort', xy=["seg_x", "s
     return(out_fc)
 
 def DFtoTable(df, tbl, fill=-99999):
-    # Convert data frame to Arc Table by converting to np.array with fill values and then to Table
+    """Convert data frame to Arc Table by converting to np.array with fill values and then to Table"""
     try:
         arr = df.select_dtypes(exclude=['object']).fillna(fill).to_records()
     except ValueError:
@@ -1335,7 +1366,7 @@ def DFtoTable(df, tbl, fill=-99999):
     return(tbl)
 
 def JoinDFtoRaster(df, rst_ID, out_rst='', fill=-99999, id_fld='sort_ID', val_fld=''):
-    # Join fields from df to rst_ID to create new out_rst
+    """Join fields from df to rst_ID to create new out_rst"""
     if len(out_rst) < 1:
         out_rst = 'trans2rst_'+val_fld
     # Convert DF to Table
