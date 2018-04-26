@@ -62,9 +62,6 @@ else:
 sitevals['MTL'] = MTL = (sitevals['MHW'] + sitevals['MLW'])/2
 
 ############## Output filenames/paths ###############################
-if not 'elevGrid_5m' in locals() and 'elevGrid' in locals():
-    elevGrid_5m = elevGrid+'_5m'                                              # Elevation resampled to 5 m grids
-
 # OUTPUTS
 trans_name = '{}{}_trans'.format(sitevals['code'], yabbr)
 pts_name = '{}{}_pts'.format(sitevals['code'], yabbr)
@@ -73,3 +70,5 @@ bw_rst="{}{}_ubw".format(sitevals['code'], yabbr)
 
 if not __name__ == '__main__':
     print("setvars.py initialized variables.")
+    print("SITE: {site}\nMHW: {MHW}\nMLW: {MLW}".format(**sitevals))
+    print("Max dune crest height: {}\nProjection code: {}\n".format(maxDH, proj_code))
