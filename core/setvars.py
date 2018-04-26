@@ -67,6 +67,7 @@ trans_name = '{}{}_trans'.format(sitevals['code'], yabbr)
 pts_name = '{}{}_pts'.format(sitevals['code'], yabbr)
 rst_transID = os.path.join(home, "{}_rstTransID".format(sitevals['site']))
 bw_rst="{}{}_ubw".format(sitevals['code'], yabbr)
+pts_presort = os.path.join(arcpy.env.scratchGDB, 'transPts_unsorted')
 
 if not __name__ == '__main__':
     print("setvars.py initialized variables.")
