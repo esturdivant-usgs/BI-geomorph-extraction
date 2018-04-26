@@ -62,6 +62,12 @@ else:
 sitevals['MTL'] = MTL = (sitevals['MHW'] + sitevals['MLW'])/2
 
 ############## Output filenames/paths ###############################
+# Optional intermediates
+inletLines = os.path.join(home, 'inletLines')
+shoreline = os.path.join(home, 'ShoreBetweenInlets')
+armorLines = os.path.join(home, 'armorLines')
+slopeGrid = os.path.join(home, 'slope_5m')
+
 # OUTPUTS
 trans_name = '{}{}_trans'.format(sitevals['code'], yabbr)
 pts_name = '{}{}_pts'.format(sitevals['code'], yabbr)
