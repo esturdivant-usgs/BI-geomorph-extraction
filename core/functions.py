@@ -31,7 +31,7 @@ def print_duration(start, suppress=False):
 
 def newcoord(coords, dist):
     """Computes new coordinates x3,y3 at a specified distance along the
-    prolongation of the line from x1,y1 to x2,y2"""s
+    prolongation of the line from x1,y1 to x2,y2"""
     # From: gis.stackexchange.com/questions/71645/extending-line-by-specified-distance-in-arcgis-for-desktop
     # Computes new coordinates x3,y3 at a specified distance along the
     # prolongation of the line from x1,y1 to x2,y2

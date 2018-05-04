@@ -60,6 +60,7 @@ else:
     maxDH = 2.5
 
 sitevals['MTL'] = MTL = (sitevals['MHW'] + sitevals['MLW'])/2
+state = sitevals['morph_state']
 
 ############## Output filenames/paths ###############################
 # Optional intermediates
