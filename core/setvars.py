@@ -62,14 +62,20 @@ else:
 sitevals['MTL'] = MTL = (sitevals['MHW'] + sitevals['MLW'])/2
 
 ############## Output filenames/paths ###############################
-if not 'elevGrid_5m' in locals() and 'elevGrid' in locals():
-    elevGrid_5m = elevGrid+'_5m'                                              # Elevation resampled to 5 m grids
+# Optional intermediates
+inletLines = os.path.join(home, 'inletLines')
+shoreline = os.path.join(home, 'ShoreBetweenInlets')
+armorLines = os.path.join(home, 'armorLines')
+slopeGrid = os.path.join(home, 'slope_5m')
 
 # OUTPUTS
 trans_name = '{}{}_trans'.format(sitevals['code'], yabbr)
 pts_name = '{}{}_pts'.format(sitevals['code'], yabbr)
 rst_transID = os.path.join(home, "{}_rstTransID".format(sitevals['site']))
 bw_rst="{}{}_ubw".format(sitevals['code'], yabbr)
+pts_presort = os.path.join(arcpy.env.scratchGDB, 'transPts_unsorted')
 
 if not __name__ == '__main__':
     print("setvars.py initialized variables.")
+    print("SITE: {site}\nMHW: {MHW}\nMLW: {MLW}".format(**sitevals))
+    print("Max dune crest height: {}\nProjection code: {}\n".format(maxDH, proj_code))

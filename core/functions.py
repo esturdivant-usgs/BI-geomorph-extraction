@@ -19,6 +19,7 @@ import matplotlib
 matplotlib.style.use('ggplot')
 
 def print_duration(start, suppress=False):
+    """Print the duration since the given start time."""
     duration = time.clock() - start
     hours, remainder = divmod(duration, 3600)
     minutes, seconds = divmod(remainder, 60)
@@ -29,6 +30,8 @@ def print_duration(start, suppress=False):
     return(duration_str)
 
 def newcoord(coords, dist):
+    """Computes new coordinates x3,y3 at a specified distance along the
+    prolongation of the line from x1,y1 to x2,y2"""s
     # From: gis.stackexchange.com/questions/71645/extending-line-by-specified-distance-in-arcgis-for-desktop
     # Computes new coordinates x3,y3 at a specified distance along the
     # prolongation of the line from x1,y1 to x2,y2
@@ -41,9 +44,10 @@ def newcoord(coords, dist):
     return x3, y3
 
 def check_id_fld(df, id_fld, fill=-99999):
-    # determine whether index or id_fld is the correct index field; make index the correct index field with the correct name
-    # compare index to id_fld
-    # check whether nulls or duplicated exist in ID field
+    """determine whether index or id_fld is the correct index field;
+    make index the correct index field with the correct name
+    compare index to id_fld
+    check whether nulls or duplicated exist in ID field"""
     bad_idx = any([df.index.duplicated().any(), df.index.isnull().any(), any(df.index==fill)])
     if id_fld in df.columns:
         # Evaluate df.id_fld:
@@ -71,6 +75,7 @@ def check_id_fld(df, id_fld, fill=-99999):
     return(df)
 
 def join_columns_id_check(df1, df2, id_fld='ID', how='outer', fill=-99999):
+    """Join columns after performing QC on ID field."""
     # If both DFs should be joined on index field, must remove duplicate names
     # If one should be joined on index and the other not, must remove one of the
     if not 'SplitSort' in df1.columns:
@@ -84,6 +89,7 @@ def join_columns_id_check(df1, df2, id_fld='ID', how='outer', fill=-99999):
     return(df1)
 
 def join_columns(df1, df2, id_fld='ID', how='outer'):
+    """Join columns."""
     # If both DFs should be joined on index field, must remove duplicate names
     # If one should be joined on index and the other not, must remove one of the
     if id_fld in df2.columns:
@@ -102,7 +108,7 @@ def join_columns(df1, df2, id_fld='ID', how='outer'):
     return(df1)
 
 def adjust2mhw(df, MHW, fldlist=['DH_z', 'DL_z', 'Arm_z'], fill=-99999):
-    # Add elevation fields with values adjusted to MHW, stored in '[fieldname]mhw'
+    """Add elevation fields with values adjusted to MHW, stored in '[fieldname]mhw'"""
     # If fill values present in df, replace with nan to perform adjustment and then replace
     if (df == fill).any().any():
         input_fill = True
@@ -115,7 +121,7 @@ def adjust2mhw(df, MHW, fldlist=['DH_z', 'DL_z', 'Arm_z'], fill=-99999):
     return(df)
 
 def sort_pts(df, tID_fld='sort_ID', pID_fld='SplitSort'):
-    # Calculate pt distance from shore; use that to sort pts and create pID_fld
+    """Calculate pt distance from shore; use that to sort pts and create pID_fld"""
     # 1. set X and Y fields
     if 'SHAPE@X' in df.columns:
         df.drop(['seg_x', 'seg_y'], axis=1, inplace=True, errors='ignore')
@@ -137,6 +143,7 @@ def sort_pts(df, tID_fld='sort_ID', pID_fld='SplitSort'):
     return(df)
 
 def calc_trans_distances(df, MHW=''):
+    """Calculate the transect distances: DistDH, DistDL, DistArm, and conditionally adjust to MHW."""
     df2 = pd.DataFrame({'DistDH': np.hypot(df.SL_x - df.DH_x, df.SL_y - df.DH_y),
                         'DistDL': np.hypot(df.SL_x - df.DL_x, df.SL_y - df.DL_y),
                         'DistArm': np.hypot(df.SL_x - df.Arm_x, df.SL_y - df.Arm_y)},
@@ -147,6 +154,7 @@ def calc_trans_distances(df, MHW=''):
     return(df)
 
 def calc_pt_distances(df):
+    """Calculate the point distances: DistSegDH, DistSegDL, DisSegtArm, and Dist_MHWbay."""
     df2 = pd.DataFrame({'DistSegDH': df.Dist_Seg - df.DistDH,
                         'DistSegDL': df.Dist_Seg - df.DistDL,
                         'DistSegArm': df.Dist_Seg - df.DistArm,
@@ -156,7 +164,7 @@ def calc_pt_distances(df):
     return(df)
 
 def prep_points(df, tID_fld, pID_fld, MHW, fill=-99999, old2newflds={}):
-    # Preprocess transect points (after running FCtoDF(transPts, xy=True))
+    """Preprocess transect points (after running FCtoDF(transPts, xy=True))"""
     # Replace fills with NaNs
     df.replace(fill, np.nan, inplace=True)
     # Rename columns
@@ -171,7 +179,7 @@ def prep_points(df, tID_fld, pID_fld, MHW, fill=-99999, old2newflds={}):
     return(df)
 
 def aggregate_z(df, MHW, id_fld, zfld, fill):
-    # Aggregate ptZmhw to max and mean and join to transects
+    """Aggregate ptZmhw to max and mean and join to transects"""
     input_fill=False
     if (df == fill).any().any():
         input_fill = True
@@ -189,6 +197,7 @@ def aggregate_z(df, MHW, id_fld, zfld, fill):
     return(df, zmhw)
 
 def get_beachplot_values(pts_set):
+    """Get values to use while plotting island and beach cross-section for QC."""
     tran = pts_set.iloc[0]
 
     # Get maximum Z values
@@ -212,6 +221,7 @@ def get_beachplot_values(pts_set):
     return(tran, idmaxz, maxz, mz_xy, mz_dist, bend, btop)
 
 def plot_island_profile(ax, pts_set, MHW, MTL):
+    """Plot island cross-section to QC calculated values."""
     # Get prep values
     tran, idmaxz, maxz, mz_xy, mz_dist, bend, btop = get_beachplot_values(pts_set)
     maxz = maxz+MHW
@@ -259,6 +269,7 @@ def plot_island_profile(ax, pts_set, MHW, MTL):
     plt.annotate('MHW', xy=(-tran.WidthFull*0.02, MHW-0.15), color='blue', alpha=0.7)
 
 def plot_beach_profile(ax, pts_set, MHW, MTL, maxDH):
+    """Plot beach cross-section to QC calculated values."""
     # Get prep values
     tran, idmaxz, maxz, mz_xy, mz_dist, bend, btop = get_beachplot_values(pts_set)
     maxz = maxz+MHW
