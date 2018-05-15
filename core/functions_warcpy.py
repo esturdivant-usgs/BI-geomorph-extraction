@@ -268,7 +268,7 @@ Pre-processing
 """
 def MorphologyCSV_to_FCsByFeature(csvpath: str, state: int, proj_code, csv_fill = 999, fc_fill = -99999, csv_epsg=4326):
     """
-    Given a CSV of morphology feature positions from Doran and others 
+    Given a CSV of morphology feature positions from Doran and others
     (https://doi.org/10.5066/F7GF0S0Z), convert the points in a given
     state to three feature classes (SL, DT, DC).
     """
@@ -530,7 +530,7 @@ def SortTransectsFromSortLines(in_trans, out_trans, sort_lines=[], tID_fld='sort
     # Add the transect ID field to the transects if it doesn't already exist.
     AddNewFields(in_trans,[tID_fld],fieldtype="SHORT", verbose=True)
     # If sort_lines is blank ([]), go ahead and sort the transects based on sort_corner argument.
-    if not len(sort_lines):
+    if len(sort_lines) < 1:
         if verbose:
             print("sort_lines not specified, so we are sorting the transects in one group from the {} corner.".format(sort_corner))
         out_trans = arcpy.Sort_management(in_trans, out_trans, [['Shape', 'ASCENDING']], sort_corner) # Sort from lower lef
@@ -681,36 +681,30 @@ def CombineShorelinePolygons(bndMTL: str, bndMHW: str, inletLines: str,
     start = time.clock()
     # Inlet lines must intersect the MHW polygon
     symdiff = os.path.join(arcpy.env.scratchGDB, 'shore_1symdiff')
-    split_lyrname = 'shore_2split'
-    split = os.path.join(arcpy.env.scratchGDB, split_lyrname)
-    union_2 = os.path.join(arcpy.env.scratchGDB, 'shore_3union')
+    split = os.path.join(arcpy.env.scratchGDB, 'shore_2split')
+    join = os.path.join(arcpy.env.scratchGDB, 'shore_3_oceanMTL')
+    erase = os.path.join(arcpy.env.scratchGDB, 'shore_4_bayMTL')
+    union_2 = os.path.join(arcpy.env.scratchGDB, 'shore_5union')
 
     # Create layer (symdiff) of land between MTL and MHW and split by inlets
+    print("...delineating land between MTL and MHW elevations...")
     arcpy.Delete_management(symdiff) # delete if already exists
     arcpy.SymDiff_analysis(bndMTL, bndMHW, symdiff)
+
+    # Split symdiff at inlets (and SA_bounds)
+    print("...removing the MHW-MTL areas on the oceanside...")
     if len(SA_bounds) > 0:
         arcpy.FeatureToPolygon_management([symdiff, inletLines, SA_bounds], split) # Split MTL features at inlets and study area bounds
     else:
         arcpy.FeatureToPolygon_management([symdiff, inletLines], split) # Split MTL features at inlets
-
-    print("Isolating the below-MHW portion of the polygon to the bayside...")
-    # Select bayside MHW-MTL area, polygons that don't intersect shoreline points
-    # Get shoreline points geometry objects
-    #FIXME?: alternative to these cursor operations are SpatialJoin_analysis with KEEP_COMMON, as in CreateShoreBetweenInlets()
-    slpts = [srow[0] for srow in arcpy.da.SearchCursor(ShorelinePts, ("SHAPE@"))]
-    with arcpy.da.UpdateCursor(split, ("SHAPE@")) as cursor:
-        for prow in cursor:
-            pgeom = prow[0]
-            # Delete the polygon if it instersects any shoreline point
-            # (if not all of the points (with 10 m buffer) are disjoint from the polygon)
-            if not all(pgeom.disjoint(spt.buffer(10)) for spt in slpts):
-                cursor.deleteRow()
+    # Isolate polygons touching shoreline points and erase from symdiff
+    arcpy.SpatialJoin_analysis(split, ShorelinePts, split+'_join', "#","KEEP_COMMON", match_option="COMPLETELY_CONTAINS")
+    arcpy.Erase_analysis(symdiff, split+'_join', erase)
 
     # Merge bayside MHW-MTL with above-MHW polygon
-    arcpy.Union_analysis([split, bndMHW], union_2)
+    arcpy.Union_analysis([erase, bndMHW], union_2)
     arcpy.Dissolve_management(union_2, bndpoly, multi_part='SINGLE_PART') # Dissolve all features in union_2 to single part polygons
-    print('''\nUser input required! Select extra features in {} for deletion.\n
-        Recommended technique: select the polygon/s to keep and then Switch Selection.\n'''.format(os.path.basename(bndpoly)))
+    print('''User input required! Select extra features in {} for deletion.\nRecommended technique: select the polygon/s to keep and then Switch Selection.\n'''.format(os.path.basename(bndpoly)))
     return(bndpoly)
 
 def DEMtoFullShorelinePoly(elevGrid, MTL, MHW, inletLines, ShorelinePts, SA_bounds=''):
