@@ -266,7 +266,47 @@ def DeleteFeaturesByValue(fc: str, fields=[], deletevalue=-99999) -> str:
 """
 Pre-processing
 """
-# Part 1 functions
+def MorphologyCSV_to_FCsByFeature(csvpath: str, state: int, proj_code, csv_fill = 999, fc_fill = -99999, csv_epsg=4326):
+    """
+    Given a CSV of morphology feature positions from Doran and others 
+    (https://doi.org/10.5066/F7GF0S0Z), convert the points in a given
+    state to three feature classes (SL, DT, DC).
+    """
+    # initialize
+    datapre = os.path.splitext(os.path.basename(csvpath))[0]
+    crs = arcpy.SpatialReference(csv_epsg)
+
+    # import CSV as DF
+    df = pd.read_csv(csvpath)
+
+    # remove nulls/fills
+    df = df[df != csv_fill]
+
+    # Subset by state
+    df = df[df.state == state]
+
+    # Subset by feature type
+    feat_code = 'DT'
+    subdf = df[df.feature_type == feat_code]
+    fcname = os.path.join(arcpy.env.scratchGDB, 'm{}_s{}_{}'.format(datapre, state, feat_code))
+    fc = DFtoFC(subdf, fcname+'_wgs', spatial_ref=crs, xy=['lon', 'lat'], keep_fields='all', fill=fc_fill)
+    dt_fc = ReProject(fc, fcname, proj_code)
+    # arcpy.SelectLayerByLocation_management(fcname, "INTERSECT", barrierBoundary)
+
+    feat_code = 'DC'
+    subdf = df[df.feature_type == feat_code]
+    fcname = os.path.join(arcpy.env.scratchGDB, 'm{}_s{}_{}'.format(datapre, state, feat_code))
+    fc = DFtoFC(subdf, fcname+'_wgs', spatial_ref=crs, xy=['lon', 'lat'], keep_fields='all', fill=fc_fill)
+    dc_fc = ReProject(fc, fcname, proj_code)
+
+    feat_code = 'SL'
+    subdf = df[df.feature_type == feat_code]
+    fcname = os.path.join(arcpy.env.scratchGDB, 'm{}_s{}_{}'.format(datapre, state, feat_code))
+    fc = DFtoFC(subdf, fcname+'_wgs', spatial_ref=crs, xy=['lon', 'lat'], keep_fields='all', fill=fc_fill)
+    sl_fc = ReProject(fc, fcname, proj_code)
+
+    return(dt_fc, dc_fc, sl_fc)
+
 def ProcessDEM(elevGrid: str, utmSR) -> str:
     """
     Check that raster is 5x5 resolution and in correct projection.
