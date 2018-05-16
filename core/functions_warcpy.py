@@ -516,13 +516,13 @@ def SortTransectPrep(spatialref):
         arcpy.AddField_management(sort_lines,'sort_corn', 'TEXT', field_length=2)
         arcpy.AddField_management(sort_lines, 'reverse', 'TEXT', field_length=1)
         print("MANUALLY: Add features to sort_lines. Indicate the order of use in 'sort', the sort corner in 'sort_corn', and the direction in 'reverse'.")
+        return(os.path.join(arcpy.env.scratchGDB, sort_lines))
     else:
-        sort_lines = []
         # Corner from which to start sorting, LL = lower left, etc.
         sort_corner = input("Sort corner (LL, LR, UL, UR): ")
-    return(os.path.join(arcpy.env.scratchGDB, 'sort_lines'))
+        return(sort_corner)
 
-def SortTransectsFromSortLines(in_trans, out_trans, sort_lines=[], tID_fld='sort_ID', sort_corner='LL', verbose=True):
+def SortTransectsFromSortLines(in_trans, out_trans, sort_lines_or_corner='LL', tID_fld='sort_ID', verbose=True):
     """
     Sort the transects along the shoreline using pre-created lines (sort_lines) to sort.
     """
@@ -530,11 +530,13 @@ def SortTransectsFromSortLines(in_trans, out_trans, sort_lines=[], tID_fld='sort
     # Add the transect ID field to the transects if it doesn't already exist.
     AddNewFields(in_trans,[tID_fld],fieldtype="SHORT", verbose=True)
     # If sort_lines is blank ([]), go ahead and sort the transects based on sort_corner argument.
-    if len(sort_lines) < 1:
+    if len(sort_lines_or_corner) == 2:
+        sort_corner = sort_lines_or_corner
         if verbose:
             print("sort_lines not specified, so we are sorting the transects in one group from the {} corner.".format(sort_corner))
         out_trans = arcpy.Sort_management(in_trans, out_trans, [['Shape', 'ASCENDING']], sort_corner) # Sort from lower lef
     else:
+        sort_lines = sort_lines_or_corner
         if verbose:
             print("Creating new feature class {} to hold sorted transects...".format(os.path.basename(out_trans)))
         out_trans = arcpy.CreateFeatureclass_management(arcpy.env.workspace, os.path.basename(out_trans), "POLYLINE", in_trans, spatial_reference=in_trans)
@@ -670,6 +672,7 @@ def RasterToLandPerimeter(in_raster, out_polygon, threshold,
         arcpy.AggregatePolygons_cartography(r2p_union, out_polygon, agg_dist, min_area, min_hole_sz)
     else:
         arcpy.AggregatePolygons_cartography(r2p, out_polygon, agg_dist, min_area, min_hole_sz)
+    print('Aggregation distance: {}\nMinimum area: {}\nMinimum hole size: {}'.format(agg_dist, min_area, min_hole_sz))
     return(out_polygon)
 
 def CombineShorelinePolygons(bndMTL: str, bndMHW: str, inletLines: str,
@@ -707,16 +710,16 @@ def CombineShorelinePolygons(bndMTL: str, bndMHW: str, inletLines: str,
     print('''User input required! Select extra features in {} for deletion.\nRecommended technique: select the polygon/s to keep and then Switch Selection.\n'''.format(os.path.basename(bndpoly)))
     return(bndpoly)
 
-def DEMtoFullShorelinePoly(elevGrid, MTL, MHW, inletLines, ShorelinePts, SA_bounds=''):
+def DEMtoFullShorelinePoly(elevGrid, MTL, MHW, inletLines, ShorelinePts, SA_bounds='', suffix=''):
     """Delinate the full shoreline polygon from the DEM.
     Creates the MTL and MHW contour polygons and then combines them."""
-    bndMTL = 'bndpoly_mtl'
-    bndMHW = 'bndpoly_mhw'
-    bndpoly = 'bndpoly'
+    bndMTL = 'bndpoly_mtl' + suffix
+    bndMHW = 'bndpoly_mhw' + suffix
+    bndpoly = 'bndpoly' + suffix
     print("Creating the MTL contour polgon from the DEM...")
-    RasterToLandPerimeter(elevGrid, bndMTL, MTL)  # Polygon of MTL contour
+    RasterToLandPerimeter(elevGrid, bndMTL, MTL, agg_dist='10', min_area='300', min_hole_sz='300')  # Polygon of MTL contour
     print("Creating the MHW contour polgon from the DEM...")
-    RasterToLandPerimeter(elevGrid, bndMHW, MHW)  # Polygon of MHW contour
+    RasterToLandPerimeter(elevGrid, bndMHW, MHW, agg_dist='10', min_area='300', min_hole_sz='300')  # Polygon of MHW contour
     print("Combining the two polygons...")
     bndpoly = CombineShorelinePolygons(bndMTL, bndMHW, inletLines, ShorelinePts, bndpoly, SA_bounds)
     #DeleteTempFiles()
