@@ -407,7 +407,7 @@ def ExtendLine(fc: str, new_fc: str, distance: int, proj_code: int=26918, verbos
         firstpoint = [point for x, point in enumerate(vert) if x in vertcounts or x-1 in vertcounts]
         # Obtain list of tuples of new end coordinates by converting flat list of
         # tuples to list of lists of tuples.
-        newvert = [newcoord_rev(y, float(distance)) for y in zip(*[iter(firstpoint)]*2)]
+        newvert = [newcoord_rev(y, -float(distance)) for y in zip(*[iter(firstpoint)]*2)]
         j = 0
         with arcpy.da.UpdateCursor(new_fc, "SHAPE@XY", explode_to_points=True) as cursor:
             for i, row in enumerate(cursor):
@@ -419,7 +419,7 @@ def ExtendLine(fc: str, new_fc: str, distance: int, proj_code: int=26918, verbos
         print("Transects extended.")
     return(new_fc)
 
-def ExtendLine_backward(fc, new_fc, distance, proj_code=26918, verbose=True):
+def ExtendLine_backward(fc: str, new_fc: str, distance: int, proj_code: int=26918, verbose: bool=True):
     """Extend lines in FC in inverse direction. Save in new FC."""
     # From GIS stack exchange http://gis.stackexchange.com/questions/71645/a-tool-or-way-to-extend-line-by-specified-distance
     # layer must have map projection
@@ -481,8 +481,11 @@ def RemoveDuplicates(trans_presort, orig_xtnd, verbose=True):
                 tran = trow[0]
                 if tran.equals(oldline):
                     cursor.deleteRow()
+    arcpy.FeatureClassToFeatureClass_conversion(trans_presort, arcpy.env.scratchGDB, trans_presort+'_preAppend')
     # 3. Append original extended transects (with values) to the new transects
     arcpy.Append_management(orig_xtnd, trans_presort)
+    print("Number of features in {}: {}".format(os.path.basename(orig_xtnd), arcpy.GetCount_management(orig_xtnd)[0]))
+    print("Number of features in {}: {}".format(os.path.basename(trans_presort), arcpy.GetCount_management(trans_presort)[0]))
     if verbose:
         print("{} ready for sorting. It should be in your scratch geodatabase.".format(os.path.basename(trans_presort)))
     return(trans_presort)
