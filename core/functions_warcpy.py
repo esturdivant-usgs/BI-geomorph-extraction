@@ -419,56 +419,6 @@ def ExtendLine(fc: str, new_fc: str, distance: int, proj_code: int=26918, verbos
         print("Transects extended.")
     return(new_fc)
 
-def ExtendLine_backward(fc: str, new_fc: str, distance: int, proj_code: int=26918, verbose: bool=True):
-    """Extend lines in FC in inverse direction. Save in new FC."""
-    # From GIS stack exchange http://gis.stackexchange.com/questions/71645/a-tool-or-way-to-extend-line-by-specified-distance
-    # layer must have map projection
-    def accumulate(iterable):
-        # accumulate([1,2,3,4,5]) --> 1 3 6 10 15
-        # (Equivalent to itertools.accumulate() - isn't in Python 2.7)
-        it = iter(iterable)
-        total = next(it) # initialize with the first value
-        yield total
-        for element in it:
-            total = add(total, element)
-            yield total
-
-    # Project transects to UTM
-    if len(os.path.split(new_fc)) > 1:
-        fcpath, fcbase = os.path.split(new_fc)
-    if not arcpy.Describe(fc).spatialReference.factoryCode == proj_code:
-        print('Projecting {} to UTM'.format(os.path.basename(fc)))
-        arcpy.Project_management(fc, fc+'utm_temp', arcpy.SpatialReference(proj_code))  # project to PCS
-        arcpy.FeatureClassToFeatureClass_conversion(fc+'utm_temp', fcpath, fcbase)
-    else:
-        print('{} is already projected in UTM.'.format(os.path.basename(fc)))
-        arcpy.FeatureClassToFeatureClass_conversion(fc, fcpath, fcbase)
-
-    #OID is needed to determine how to break up flat list of data by feature.
-    coordinates = [[row[0], row[1]] for row in
-                   arcpy.da.SearchCursor(fc, ["OID@", "SHAPE@XY"],
-                   explode_to_points=True)]
-    oid, vert = zip(*coordinates)
-    # List vert positions that mark the start of a new feature class by counting OIDs and accumulating the values.
-    vertcounts = list(accumulate(collections.Counter(oid).values()))
-
-    # Grab the first two vertices of each feature (they will either be listed in vertcounts or one ahead of one in vertcounts)
-    firstpoint = [point for x,point in enumerate(vert) if x in vertcounts or x-1 in vertcounts]
-
-    # Obtain list of tuples of new end coordinates by converting flat list of
-    # tuples to list of lists of tuples.
-    newvert = [newcoord_rev(y, float(distance)) for y in zip(*[iter(firstpoint)]*2)]
-    j = 0
-    with arcpy.da.UpdateCursor(new_fc, "SHAPE@XY", explode_to_points=True) as cursor:
-        for i, row in enumerate(cursor):
-            if i in vertcounts:
-                row[0] = newvert[j]
-                j+=1
-                cursor.updateRow(row) #FIXME: If the FC was projected as part of the function, returns RuntimeError: "The spatial index grid size is invalid."
-    if verbose:
-        print("Transects extended.")
-    return(new_fc)
-
 def RemoveDuplicates(trans_presort, orig_xtnd, verbose=True):
     """Remove each feature from trans_presort that is an exact
     duplicate geometry of a feature in orig_xtnd."""
