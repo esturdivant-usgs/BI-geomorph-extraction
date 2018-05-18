@@ -52,7 +52,7 @@ jupyter notebook
     - supplemented and sorted transects <- script + **manual**; Sorting is only semi-automated and tricky. See explanations below/in prepper.ipynb.
     - 'tidied' extended transects <- script + **manual**
 
-2. Review values (mostly file paths) in setvars.py and update if needed.
+2. Review values (mostly file paths) in setvars.py and extractor.ipynb and update if needed.
 
 3. QA/QC/cross-check everything thoroughly: projections, agreement, etc. Preferred projection is NAD83, Meters - Albers or UTM Zone 18N or 19N depending on region of Atlantic coast. Where projection is important, the script will reproject as necessary. You may need to create the following files: 
     - inlet lines <- DEM + **manual**
@@ -62,8 +62,7 @@ jupyter notebook
 
 ### Contents of this repository
 
-- core: functions implemented in the notebooks.
-- notebooks: prepper.ipynb and extractor.ipynb are used to perform the processing.
-- sample_scratch: data frames in pickle format that were saved in the scratch directory during Fire Island extraction to potentially use for testing.
-- temp: notebooks for sites that have already been run. These will probably be released with the datasets they were used to create and will be removed prior to publication.
+- core: functions implemented in the processing.
+- notebooks: extractor.ipynb is the Jupyter Notebook used to perform the processing.
+- sample_scratch: data frames in pickle format that were saved in the scratch directory during Fire Island extraction to use for testing.
 - docs: files for use in the display of the package.
