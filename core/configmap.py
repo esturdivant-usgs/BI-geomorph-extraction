@@ -74,7 +74,27 @@ sitemap = {
                     'code': 'pari',
                     'MHW':0.34, 'MLW':-0.56,
                     'id_init_val':170000,
-                    'morph_state': 12}
+                    'morph_state': 12},
+    'RhodeIsland':{'region': 'RhodeIsland', 'site': 'RhodeIsland',
+                    'code': 'ri',
+                    'MHW':0.29, 'MLW':-0.42,
+                    'id_init_val':50000,
+                    'morph_state': 17},
+    # 'RhodeIsland_West1':{'region': 'RhodeIsland', 'site': 'RhodeIsland',
+    #                 'code': 'riw1',
+    #                 'MHW':0.29, 'MLW':-0.,
+    #                 'id_init_val':50000,
+    #                 'morph_state': 17},
+    # 'RhodeIsland_West2':{'region': 'RhodeIsland', 'site': 'RhodeIsland',
+    #                 'code': 'riw2',
+    #                 'MHW':0.22, 'MLW':-0.,
+    #                 'id_init_val':50000,
+    #                 'morph_state': 17}
+    # 'RhodeIsland_East':{'region': 'RhodeIsland', 'site': 'RhodeIsland',
+    #                 'code': 'riec',
+    #                 'MHW':0.36, 'MLW':-0.,
+    #                 'id_init_val':50000,
+    #                 'morph_state': 18}
     }
 
 ########### Default Values ##########################
