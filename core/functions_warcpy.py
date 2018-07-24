@@ -1213,7 +1213,11 @@ def TransectsToPointsDF(in_trans, barrierBoundary, fc_out='', tID_fld='sort_ID',
 
     if len(fc_out) > 1:
         print("Converting dataframe to feature class ('{}')...".format(os.path.basename(fc_out)))
-        fc_out = DFtoFC(df, fc_out, id_fld=tID_fld, spatial_ref = arcpy.Describe(in_trans).spatialReference)
+        try:
+            fc_out = DFtoFC(df, fc_out, id_fld=tID_fld, spatial_ref = arcpy.Describe(in_trans).spatialReference)
+        except RuntimeError:
+            fc_out += '_v2'
+            fc_out = DFtoFC(df, fc_out, id_fld=tID_fld, spatial_ref = arcpy.Describe(in_trans).spatialReference)
 
     duration = fun.print_duration(start)
     return(df, fc_out)
